@@ -5,6 +5,14 @@ Win a prize in "Google – The Gemma 4 Developer Agent Paper Track" (Kaggle) wit
 that advances agentic software engineering, centred on making Gemma 4 a better agent.
 Not a remix of an arXiv paper. Not a pure repo-mapping paper (navigation may be one part).
 
+## Ambition rule (the user's explicit priority)
+- The contribution must be a NEW METHOD or mechanism: a new algorithm, training signal, agent-loop
+  design, representation, or search/verification scheme that does not exist yet.
+- Not acceptable as the core contribution: applying a published method to Gemma, prompt tuning,
+  hyperparameter sweeps, ensembling known tricks, or measurement-only studies.
+- Prefer a bold idea with a real chance of failing over a safe idea that will certainly work a little.
+- Honesty still wins: if a bold method fails, the paper reports WHY, with evidence.
+
 ## Hard facts (re-verify on Kaggle before relying on them; Kaggle overrides this file)
 - Paper deadline: 2026-11-12 23:59 UTC. Target internal submit: 2026-11-09.
 - Writeup ≤ 3,000 words. Count title, abstract, captions and references until the host says otherwise.
@@ -40,6 +48,20 @@ Keep research/novelty-map.md updated as you find more.
   he is new to LLM agents, so define terms once, then move on. No condescension.
 - Ask him only at the GATES below. Between gates, work autonomously.
 - Never submit anything to Kaggle and never publish datasets. He does that himself.
+
+## Model routing (save Opus for thinking)
+The main session runs Opus. It decides, synthesises and designs; it does NOT do bulk reading itself.
+Delegate by tier, always starting with the cheapest tier that can do the job:
+- Haiku (`fetcher`, built-in `Explore`): fetching pages, pulling facts/tables out of forum threads and
+  repos, grepping logs, parsing result JSONs, word counts, formatting. No judgment calls.
+- Sonnet (`scout`, `experimenter`): reading and summarising papers, comparing related work,
+  writing and debugging code, notebooks, statistics.
+- Opus (`novelty-critic`, `reviewer`, `deep-thinker`): only for judgment that decides the paper —
+  attacking ideas, designing a new mechanism, diagnosing why a method fails, scoring the draft.
+Escalation: if a cheaper agent's output is shallow or wrong, rerun that task one tier up (pass the
+`model` parameter on the call) and note it in research/log.md. Never start at Opus "to be safe".
+Batching: send ideas, results or drafts to Opus agents in ONE batched call, not one call per item.
+Keep subagent reports short: ask for tables and bullet findings, not essays.
 
 ## Research integrity (non-negotiable)
 - Every claim in the paper must map to a row in research/claims.md with the evidence file and run ids.

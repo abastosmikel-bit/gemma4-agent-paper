@@ -1,0 +1,38 @@
+{
+  "model": "opus",
+  "effortLevel": "xhigh",
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "4"
+  },
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch",
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(kaggle competitions list *)",
+      "Bash(kaggle competitions files *)",
+      "Bash(kaggle competitions download *)",
+      "Bash(kaggle kernels status *)",
+      "Bash(kaggle kernels output *)",
+      "Bash(git push *)"
+    ],
+    "ask": [
+      "Bash(kaggle kernels push *)"
+    ],
+    "deny": [
+      "Bash(kaggle competitions submit *)",
+      "Bash(kaggle datasets create *)",
+      "Bash(kaggle datasets version *)",
+      "Bash(rm -rf *)"
+    ]
+  }
+}

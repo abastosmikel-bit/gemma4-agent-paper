@@ -23,6 +23,8 @@ MALFORMED_ERROR_TYPES = {"ValueError", "TypeError", "ValidationError", "KeyError
 EDIT_TOOLS = {"edit_file", "write_file"}
 SKILL_TOOLS = {"load_skill", "load_skill_resource", "run_skill_script", "list_skills"}
 CUTOFF_MARK = "was cut off"
+# error types a skill script may print for a call whose arguments were unusable (convention: JSON on stdout)
+SKILL_ARG_ERRORS = {"MissingArgument", "BadArguments"}
 
 
 def _canon(args: dict) -> str:
@@ -59,6 +61,9 @@ def is_malformed(ev: ToolEvent) -> bool:
     if et in MALFORMED_ERROR_TYPES:
         return True
     if r.get("error_code") in ("INVALID_ARGUMENTS", "MISSING_SKILL_NAME", "SKILL_NOT_FOUND", "MISSING_FILE_PATH"):
+        return True
+    j = skill_stdout_json(ev)
+    if j and j.get("error_type") in SKILL_ARG_ERRORS:
         return True
     msg = str(r.get("error", "")) + str(r.get("error_message", ""))
     return "not found in tools_dict" in msg or "missing" in msg.lower() and "argument" in msg.lower()

@@ -1,29 +1,193 @@
 {
  "summary": {
-  "tasks_run": 5,
-  "gold_pass": 2,
-  "base_fail_gold_pass (informative)": 2,
-  "replay_pass_on_informative": 2,
-  "replay_equals_gold_outcome": 5,
+  "tasks_run": 12,
+  "gold_pass": 4,
+  "base_fail_gold_pass (informative)": 4,
+  "replay_pass_on_informative": 4,
+  "replay_equals_gold_outcome": 12,
+  "replay_equals_gold_test_counts": 12,
+  "gold_differs_from_base_counts": 9,
   "replay_failed_to_build": 0
  },
  "tasks": [
+  {
+   "instance_id": "fastapi_15589",
+   "repo": "fastapi",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 3,
+    "summary": "1 error"
+   },
+   "gold": {
+    "rc": 3,
+    "summary": "1 error"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 3,
+    "summary": "1 error"
+   }
+  },
+  {
+   "instance_id": "fastapi_14986",
+   "repo": "fastapi",
+   "level": "L3_+insert_new_symbol",
+   "base": {
+    "rc": 2,
+    "summary": "1 error"
+   },
+   "gold": {
+    "rc": 2,
+    "summary": "1 error"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 2,
+    "summary": "1 error"
+   }
+  },
+  {
+   "instance_id": "requests_7502",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "5 failed, 333 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "4 failed, 334 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "4 failed, 334 passed, 1 skipped, 1 xfailed, 12 warnings"
+   }
+  },
+  {
+   "instance_id": "requests_7433",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "5 failed, 332 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "4 failed, 333 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "4 failed, 333 passed, 1 skipped, 1 xfailed, 12 warnings"
+   }
+  },
+  {
+   "instance_id": "requests_7427",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "1 failed, 215 passed, 13 skipped, 6 warnings"
+   },
+   "gold": {
+    "rc": 0,
+    "summary": "216 passed, 13 skipped, 6 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 0,
+    "summary": "216 passed, 13 skipped, 6 warnings"
+   }
+  },
+  {
+   "instance_id": "requests_7315",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "1 failed"
+   },
+   "gold": {
+    "rc": 0,
+    "summary": "1 passed"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 0,
+    "summary": "1 passed"
+   }
+  },
+  {
+   "instance_id": "requests_7328",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "11 failed, 325 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "10 failed, 326 passed, 1 skipped, 1 xfailed, 12 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "10 failed, 326 passed, 1 skipped, 1 xfailed, 12 warnings"
+   }
+  },
+  {
+   "instance_id": "requests_7309",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "13 failed, 194 passed, 13 skipped, 6 warnings"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "8 failed, 199 passed, 13 skipped, 6 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "8 failed, 199 passed, 13 skipped, 6 warnings"
+   }
+  },
+  {
+   "instance_id": "requests_7205",
+   "repo": "requests",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "9 failed, 197 passed, 13 skipped, 6 warnings"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "8 failed, 198 passed, 13 skipped, 6 warnings"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "8 failed, 198 passed, 13 skipped, 6 warnings"
+   }
+  },
   {
    "instance_id": "rich_4077",
    "repo": "rich",
    "level": "L3_+insert_new_symbol",
    "base": {
     "rc": 1,
-    "summary": "1 failed, 3 passed in 0.12s"
+    "summary": "1 failed, 3 passed"
    },
    "gold": {
     "rc": 0,
-    "summary": "4 passed in 0.11s"
+    "summary": "4 passed"
    },
    "replay_status": "ok",
    "replay": {
     "rc": 0,
-    "summary": "4 passed in 0.15s"
+    "summary": "4 passed"
    }
   },
   {
@@ -32,16 +196,16 @@
    "level": "L0_graph_def_nodes",
    "base": {
     "rc": 1,
-    "summary": "1 failed, 7 passed in 0.21s"
+    "summary": "1 failed, 7 passed"
    },
    "gold": {
     "rc": 1,
-    "summary": "1 failed, 7 passed in 0.23s"
+    "summary": "1 failed, 7 passed"
    },
    "replay_status": "ok",
    "replay": {
     "rc": 1,
-    "summary": "1 failed, 7 passed in 0.21s"
+    "summary": "1 failed, 7 passed"
    }
   },
   {
@@ -50,52 +214,16 @@
    "level": "L0_graph_def_nodes",
    "base": {
     "rc": 1,
-    "summary": "1 failed in 0.13s"
+    "summary": "4 failed, 20 passed"
    },
    "gold": {
     "rc": 0,
-    "summary": "24 passed in 0.14s"
+    "summary": "24 passed"
    },
    "replay_status": "ok",
    "replay": {
     "rc": 0,
-    "summary": "24 passed in 0.15s"
-   }
-  },
-  {
-   "instance_id": "fastapi_15589",
-   "repo": "fastapi",
-   "level": "L0_graph_def_nodes",
-   "base": {
-    "rc": 3,
-    "summary": "1 error in 0.36s"
-   },
-   "gold": {
-    "rc": 3,
-    "summary": "1 error in 0.42s"
-   },
-   "replay_status": "ok",
-   "replay": {
-    "rc": 3,
-    "summary": "1 error in 0.36s"
-   }
-  },
-  {
-   "instance_id": "fastapi_14986",
-   "repo": "fastapi",
-   "level": "L3_+insert_new_symbol",
-   "base": {
-    "rc": 1,
-    "summary": "1 error in 0.39s"
-   },
-   "gold": {
-    "rc": 1,
-    "summary": "1 error in 0.38s"
-   },
-   "replay_status": "ok",
-   "replay": {
-    "rc": 1,
-    "summary": "1 error in 0.37s"
+    "summary": "24 passed"
    }
   }
  ]

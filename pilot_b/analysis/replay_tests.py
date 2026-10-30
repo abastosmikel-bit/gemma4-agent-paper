@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -33,10 +34,11 @@ def run_tests(task, root, targets, timeout=180):
     py = os.path.join(VENV, short_repo(task), "bin", "python")
     env = dict(os.environ, PYTHONPATH=os.path.join(root, PYPATH[short_repo(task)]), PYTHONDONTWRITEBYTECODE="1")
     try:
-        p = subprocess.run([py, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "-o", "addopts=", *targets],
+        p = subprocess.run([py, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "no:randomly", "-o", "addopts=", *targets],
                            cwd=root, env=env, capture_output=True, text=True, timeout=timeout)
         tail = p.stdout.strip().splitlines()[-1:] if p.stdout.strip() else []
-        return {"rc": p.returncode, "summary": tail[0][:200] if tail else ""}
+        summ = re.sub(r"\s+in [\d.]+s.*$", "", tail[0]).strip("= ")[:200] if tail else ""
+        return {"rc": p.returncode, "summary": summ}
     except subprocess.TimeoutExpired:
         return {"rc": "timeout", "summary": ""}
 
@@ -134,6 +136,9 @@ def _save(path, done):
         "base_fail_gold_pass (informative)": len(informative),
         "replay_pass_on_informative": sum(ok(r, "replay") for r in informative),
         "replay_equals_gold_outcome": sum((r.get("replay", {}).get("rc") == 0) == ok(r, "gold") for r in rows),
+        "replay_equals_gold_test_counts": sum(r.get("replay", {}).get("summary") == r.get("gold", {}).get("summary")
+                                              and bool(r.get("gold", {}).get("summary")) for r in rows),
+        "gold_differs_from_base_counts": sum(r.get("base", {}).get("summary") != r.get("gold", {}).get("summary") for r in rows),
         "replay_failed_to_build": sum(r.get("replay", {}).get("rc") == "replay_failed" for r in rows),
     }
     with open(path, "w") as f:

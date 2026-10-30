@@ -66,7 +66,8 @@ MODEL_NAME = 'gemma-4-e4b-it-qat-w4a16-ct'
 TASK_IDS = {SMOKE!r} if SMOKE else {TASKS!r}
 CONDITIONS = ['baseline', 'graph_edit']
 # identical budgets for both conditions (the sample's 10 calls / 1 minute is a toy budget)
-BUDGET = dict(max_tool_calls=50, max_time_minutes=15.0, timeout_seconds=120, max_turns=150)
+BUDGET = dict(max_tool_calls=50, max_time_minutes=10.0, timeout_seconds=120, max_turns=150)
+HARD_STOP_H = 1.9   # never start a condition after this much notebook wall time (cap: 2 L4x4 h)
 CONCURRENCY = 4
 SEED = 1234
 import time; T0 = time.time()""")
@@ -186,6 +187,8 @@ def run_sync(fn):
     return asyncio.run(fn())
 WALL = {}
 for cond in CONDITIONS:
+    if (time.time() - T0) / 3600 > HARD_STOP_H:
+        print('HARD STOP: not starting', cond); break
     res_dir = WORKING_DIR / f'results_{cond}'
     if res_dir.exists(): shutil.rmtree(res_dir)
     cfg = EvalConfig(
@@ -208,7 +211,7 @@ from common.traces import parse_trace
 from common.metrics import task_metrics, aggregate
 out = {'smoke': SMOKE, 'model': MODEL_NAME, 'task_ids': list(TASK_IDS), 'budget': BUDGET, 'concurrency': CONCURRENCY,
        'seed': SEED, 'vllm_startup_s': T_VLLM, 'condition_wall_s': WALL, 'conditions': {}}
-for cond in CONDITIONS:
+for cond in [c for c in CONDITIONS if c in WALL]:
     res_dir = WORKING_DIR / f'results_{cond}'
     rows = [json.loads(l) for l in open(res_dir / 'task_results.jsonl')]
     per = []
@@ -230,14 +233,14 @@ for cond in CONDITIONS:
 elapsed_h = (time.time() - T0) / 3600
 out['notebook_wall_h'] = elapsed_h
 if SMOKE:
-    per_task_min = {c: WALL[c] / 60 / len(TASK_IDS) for c in CONDITIONS}
-    full_h = (T_VLLM + sum(WALL[c] * 15 / len(TASK_IDS) for c in CONDITIONS)) / 3600 + 0.25
+    per_task_min = {c: WALL[c] / 60 / len(TASK_IDS) for c in WALL}
+    full_h = (T_VLLM + sum(WALL[c] * 15 / len(TASK_IDS) for c in WALL)) / 3600 + 0.25
     out['extrapolation'] = {'minutes_per_task_at_concurrency': per_task_min, 'full_run_L4x4_hours_est': full_h}
     print('SMOKE: per-task minutes (at concurrency', CONCURRENCY, '):', per_task_min)
     print('Estimated full run (15 tasks x 2 conditions incl. setup): %.2f L4x4 hours' % full_h)
 with open(WORKING_DIR / 'pilot_b_live_results.json', 'w') as f:
     json.dump(out, f, indent=1, default=str)
-for c in CONDITIONS: print(c, json.dumps(out['conditions'][c]['aggregate']))
+for c in out['conditions']: print(c, json.dumps(out['conditions'][c]['aggregate']))
 print('notebook wall: %.2f h' % elapsed_h)""")
 
 nb = {"cells": CELLS, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},

@@ -1,0 +1,12 @@
+{
+ "hunks": 683,
+ "file_unique": 491,
+ "symbol_unique": 621,
+ "single_line_needles": 488,
+ "file_ambiguous": 192,
+ "symbol_ambiguous": 62,
+ "hunks.blank_old_text": 39,
+ "ambiguous_in_file_but_unique_in_symbol": 130,
+ "share_file_ambiguous": 0.28111273792093705,
+ "share_symbol_ambiguous": 0.09077598828696926
+}

@@ -1,8 +1,9 @@
 # Pilot B report: the code graph as an editing interface
 
-Status: CPU work done (steps 1–4). **Step 5 (live GPU check) is prepared but not run: GPU hours used = 0.**
-It needs your OK (estimate below). Every number here is *measured* unless marked otherwise, and
-is a single deterministic run (no sampling is involved in steps 1–4).
+Status: CPU work done (steps 1–4). **GPU hours used = 0.** The step-5 notebook is built but, after
+the **[Rethink](#rethink-what-question-do-these-numbers-belong-to)** below, I no longer recommend running it as designed.
+Every number here is *measured* unless marked otherwise, and is a single deterministic run (no
+sampling is involved in steps 1–4).
 
 ## What I did, in plain terms
 An LLM agent edits code with `edit_file(old_string, new_string)`: it must reproduce a piece of the
@@ -146,7 +147,7 @@ Caveat: a model may add context lines on its own. The live run measures what act
 | AutoCodeRover, Moatless, Agentless | AST search / span context; edits stay string-based | Retrieval, not edit addressing |
 | Competition: host's pinned "Note on Code Graphs for Async Functions"; paper-track threads incl. "27 fastapi tasks cannot pass (missing inline_snapshot/dirty_equals)" and a pre-registration on "anchor distance and small-agent failure" | Async gap acknowledged by the host | No public work found on graph-addressed *editing*. Kaggle pages did not render for my tools (titles from search snippets only); check the pre-registration thread yourself, as it may overlap |
 
-## Go / no-go
+## Go / no-go (first pass; superseded by the Rethink below)
 **No-go as the paper's headline method. Conditional go as a cheap component plus two measurement contributions.**
 - Symbol-addressed editing exists (CodeStruct). Under your ambition rule, applying it to Gemma is a
   remix. What is new and solid here: (a) the exact graph-naming emulator, with two newly quantified
@@ -166,6 +167,142 @@ Caveat: a model may add context lines on its own. The live run measures what act
 **Full version cost (estimate):** 4–6 working days. Live runs: E4B and 12B × 2 conditions × ~60
 tasks × 2 seeds ≈ 8–12 L4x4 hours (16–24 quota hours if doubled), i.e. most of one week's budget,
 plus ~1 day of CPU work for the graph-checked-edit verifier.
+
+## Rethink: what question do these numbers belong to?
+
+### The higher-level question
+Every edit has two parts: a **reference** (where to change) and a **payload** (what to put
+there). The model writes both; a deterministic tool must turn the reference back into a location.
+`edit_file`'s anchor text, SWE-agent's line ranges, CodeStruct's AST paths, our graph names: these
+are all **addressing schemes**. They are different ways for a lossy sender (a small model) to
+describe a place in code to an exact receiver (the tool).
+
+So the underlying question is not "graph or no graph". It is:
+
+> **How should a small model refer to the code it changes, and what should the tool do when the
+> reference is imperfect?** What share of small-model edit failures are *reference* failures (no
+> match, several matches, wrong place, outdated location) rather than *content* failures (bad
+> code)? Which scheme gives the fewest reference failures per output token?
+
+A good reference has four properties, and they pull against each other:
+1. **Unique**: it denotes one place.
+2. **Stable**: it stays valid while earlier edits change the file.
+3. **Cheap**: few tokens to produce, little exact copying.
+4. **Total**: it can point at every place a fix touches.
+
+The tool's side is a *resolver*. When a reference is imperfect, it can fail, guess, or ask back.
+That choice is part of the interface too.
+
+**On your framing.** "The graph as an editing interface" makes the graph the subject, and my
+results say it should not be:
+- The graph is not available inside the sandbox, where edits happen.
+- It is a snapshot of the code before the fix, so it goes stale after the first edit.
+- Its names fail at 15% of real edit sites (below).
+
+The graph's legitimate role is narrower. It is a *namespace the model already learned while
+navigating*, and the defects measure exactly where that continuity breaks. The right lens is
+**edit addressing as reference resolution between model and tool**. The graph is one namespace
+among four. Your original metric, "malformed or lost edits", also needs splitting into: malformed
+call, unresolved reference, ambiguous reference, wrong-site application, stale reference, and bad
+content. They have different causes and different fixes.
+
+### What the CPU results already say
+Gold patches only, so this describes the *edits a fix needs*, not what a model writes. Numbers are
+hunk-weighted (1,000 hunks in 129 tasks; `results/addressing.json`, `scoping.json`, `expressibility.json`).
+
+| Scheme | Unique | Stable | Cheap | Total |
+|---|---|---|---|---|
+| Line numbers (SWE-agent) | yes | **no: 67.6% of hunks follow an earlier hunk in the same file that changed its length (76/128 tasks)**, so line numbers computed up front go stale | yes | yes |
+| Minimal text anchor (`edit_file`) | **no: 27.7% ambiguous**; ~2 extra lines of context fix most; 2.4% stay ambiguous even with 10 | yes | copy-heavy | yes |
+| Symbol name + whole rewrite (CodeStruct-like) | mostly | yes | **no: median 6.7× the needed lines** | **no: 27.8% of hunks are outside any def/class**; 43% of tasks need such an edit |
+| Graph name | **no at 14.8% of in-symbol edit sites**: 14.0% are `async def` (no node), 0.8% share a name | **no** after the first edit (snapshot) | yes | same as symbol |
+| Symbol + scoped anchor (this pilot) | 90.9% at minimal anchor | yes | yes | same as symbol |
+
+Four conclusions:
+1. **No single scheme dominates.** Each fails one property badly. The best interface is a
+   *composite*: name a coarse scope, then anchor finely inside it, with module-level fallback.
+2. **The async gap is concentrated where fixes happen.** `async def` is 3.4% of library
+   definitions but 14.0% of edited ones. That is a new, decision-relevant fact beyond the existing
+   graph audits, which count nodes rather than edit sites.
+3. **The receiver side is solved.** The replay passes 74/74 with test counts identical to gold.
+   The unknown is entirely on the sender side: how often a *model* produces bad references, and
+   which kind.
+4. None of this has touched a model yet. If small-model failures turn out to be mostly *content*,
+   every addressing interface, CodeStruct's included, is optimising the wrong thing. That would be
+   a useful negative result in its own right.
+
+### Reframed directions
+**A. Edit-reference probe: a benchmark that separates reference failures from content failures.**
+- *How:* from the 1,000 gold hunks, build single-turn prompts. Show the current code region and
+  the exact intended change, then ask the model to express it in scheme S: anchor, line range,
+  symbol rewrite, symbol + anchor, or a resolver with feedback. Reasoning is removed, so every
+  failure is an interface failure, scored automatically per type and per output token. This is a
+  controlled experiment, not an agent run.
+- *Claim it could support:* "For Gemma E4B/12B, X% of edit-call failures are reference failures,
+  and scheme S cuts them by Y% at Z tokens." Or the negative: "reference failures are rare, so
+  edit-interface work does not pay off at this scale."
+- *New vs CodeStruct:* CodeStruct reports end-to-end Pass@1 for one structured scheme. This
+  decomposes failures by cause across the whole scheme space, with gold ground truth per edit.
+- *New vs graph audits and Diff-XYZ:* real-repo ambiguity and staleness, agent tool formats, edit
+  sites rather than node counts.
+- *Prize fit:* Best New Resource; it generalises to any agent and model.
+- *Weakness:* on its own it is a measurement. The ambition rule wants a method, so pair it with B.
+- *Cost (estimated):* ~1 day CPU to build. 4,000–8,000 short single-turn generations ≈
+  **0.3–0.6 L4x4 h** for E4B, plus ~0.4 h for 12B.
+
+**B. Reference-tolerant edits: a resolver that uses the agent's own focus and asks back cheaply (the method candidate).**
+- *How:* the edit tool stops treating an imperfect reference as an error. It resolves in steps:
+  1. Restrict to the agent's **focus scope**: symbols it recently viewed or edited, tracked by the
+     skill in a sandbox state file, so the model never has to name anything.
+  2. Allow indentation-tolerant matching.
+  3. If still ambiguous, return numbered candidates labelled by enclosing symbol, so the model
+     answers with an index (a few tokens) instead of re-emitting a longer anchor.
+  4. Never apply silently outside the focus scope.
+- *Claim it could support:* "Implicit, trajectory-derived scoping removes most reference failures
+  for small models at near-zero extra output tokens, without wrong-site edits."
+- *CPU evidence so far:* explicit symbol scope resolves 68% of ambiguous minimal anchors. That is
+  the upper bound for focus scoping when focus equals the true symbol.
+- *New vs CodeStruct:* no explicit naming, a stateful resolver, a disambiguation dialogue, and it
+  works with ordinary text anchors. That gives totality, including module-level code.
+- *New vs SWE-agent:* its guard reverts; this one repairs or asks.
+- *Main risk:* wrong focus leads to wrong-site edits. Precision must be measured, and A's probe can measure it.
+- *Cost:* ~1–2 days CPU (most pieces exist: scoped matching, AST index, skill plumbing). Live
+  pilot 15–30 tasks × 2 conditions ≈ **1.5–2.5 L4x4 h**; full ≈ 8–12 L4x4 h.
+
+**C. Live index over precomputed graph: addresses and consequences from the same edit-time index.**
+- *How:* the precomputed graph is a pre-edit snapshot that never enters the sandbox, so anything
+  done at edit time should use a live AST index (which the skill already builds). Use it for two
+  jobs: (i) addresses that are always valid, and (ii) **consequence checks** after an edit. Which
+  references to the changed symbol are now inconsistent: callers with the wrong arity or keywords,
+  overrides, imports, `__all__`? This is my earlier call-graph impact idea, recast. It does not
+  need the competition graph at all.
+- *Claim it could support:* "Many incomplete fixes are multi-site; an edit-time consequence check
+  catches them before tests."
+- *Status:* unmeasured. The first CPU step is to count how many gold patches change a signature
+  and also touch its call sites (half a day).
+- *New vs CodeStruct and the audits:* neither checks consequences. The audits describe the graph;
+  this replaces it at edit time.
+- *Cost:* ~2 days CPU; live pilot ≈ 1.5–2 L4x4 h. Only worth it if the multi-site count is high (say >15% of tasks).
+
+### Recommendation
+- **A + B as one study.** A is the measurement that decides whether the problem is real for small
+  Gemma models; B is the method that addresses it. Together they answer the higher-level question
+  rather than one point in it, and they fit the paper track's generality criterion: the claim is
+  about addressing for any small agent, not about Gemma or this graph.
+- C is a sub-feature, pending a half-day CPU count.
+- Keep everything built so far: the skill becomes B's resolver, the replay harness becomes A's
+  ground truth, and the graph emulator and defects become a short "where graph names mislead" result.
+- **Check first** the paper-track pre-registration thread "anchor distance and small-agent
+  failure". Its title suggests overlap with A. I could not read it (Kaggle did not render).
+- **The 3-task smoke as designed (with vs without skill, agentic) no longer makes sense.** It tests
+  the old framing, and 3 agentic tasks cannot measure failure rates. Two things still need GPU
+  confirmation, and they should share one cheap Kaggle session (≈0.5–0.7 L4x4 h *estimated*):
+  1. Run A's probe on E4B. This is the decisive cheap experiment.
+  2. Run a **baseline-only** agentic run on ~5 tasks, plus 1 task with the skill. The baseline
+     run records the *natural* rate and type of E4B's `edit_file` failures; the extra task confirms
+     the skill works in Kaggle's subprocess sandbox.
+- Both need ~1 day of CPU work first (probe builder, scorer, notebook update). I have not started
+  it, per your instruction to stop here.
 
 ## Surprises, collected
 1. The graph naming is an exact, simple, buggy visitor, fully reproducible.

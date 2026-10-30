@@ -5,7 +5,7 @@ The question: the competition's code graphs are used to *find* code. Can the sam
 also *address edits* ("replace `fastapi.routing.APIRoute.__init__`") instead of string matching,
 and does that cut malformed or lost edits for small models?
 
-Results and the go/no-go call are in **[REPORT.md](REPORT.md)**.
+Results, the go/no-go call and the **Rethink** (edit addressing as reference resolution) are in **[REPORT.md](REPORT.md)**.
 
 ## Layout
 | Path | What |
@@ -16,6 +16,7 @@ Results and the go/no-go call are in **[REPORT.md](REPORT.md)**.
 | `pilot_b/analysis/expressibility.py` | Steps 3–4: gold patches as symbol edits, replayed through the skill code |
 | `pilot_b/analysis/replay_tests.py` | Step 4: run tests on base / gold / replay trees |
 | `pilot_b/analysis/scoping.py` | Is a minimal `old_string` unique file-wide vs inside its symbol? |
+| `pilot_b/analysis/addressing.py` | Addressing schemes on gold hunks: line-address staleness, anchor context cost, graph-name failures at edit sites |
 | `pilot_b/tests/adk_integration.py` | Offline check through the real ADK compiler and skill-script executor |
 | `pilot_b/build_notebook.py` → `notebooks/pilot_b_live.ipynb` | Step 5 live check on Kaggle (E4B, with vs without the skill) |
 | `docs/blocker_check.md` | Step 1: can a skill script write to the repo and reach the patch? (yes) |

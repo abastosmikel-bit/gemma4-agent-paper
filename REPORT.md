@@ -99,7 +99,18 @@ Replay of every expressible gold patch through the skill code (114 files):
 0 failures** (after fixing 4 bugs this replay found: fences stripped inside docstrings, insertion
 anchors, same-name ranking, graph-name collisions).
 
-Tests (base vs gold vs replay, same local venv, `results/replay_tests.json`): **TBD_TESTS**
+Tests (`results/replay_tests.json`). For all 74 expressible tasks I ran pytest on the test files of
+`test_patch` in three trees, base, gold and replay, in one local PyPI venv per repo:
+| | Tasks |
+|---|---|
+| Replay pass/fail/error counts identical to gold | **74 / 74** |
+| Informative (base fails, gold passes) | 33 (rich 22, requests 6, fastapi 5) |
+| ... of which replay passes | **33 / 33** |
+| Gold changes test counts vs base (wider definition) | 45 |
+| Local env cannot collect the tests (old fastapi commits vs new starlette/pydantic) | 18 fastapi; counts match but carry no information |
+| Timed out (180 s) identically in all three trees | 2 (rich) |
+"Replay" here means **the skill code reproduces the gold patch**, which is an upper bound. It says
+nothing yet about whether a *model* will use the skill well. That is step 5.
 
 **Scoping (`results/scoping.json`): the strongest offline result.** For each of 683 gold hunks
 inside a definition, I took the *minimal* `old_string` a model would write: the changed lines, or

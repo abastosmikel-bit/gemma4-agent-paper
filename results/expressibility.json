@@ -1,0 +1,45 @@
+{
+ "tasks": 129,
+ "op_categories": {
+  "def": 536,
+  "module.imports": 179,
+  "async_def": 92,
+  "module.statement": 86,
+  "class.body_stmt": 54,
+  "module.new_symbol": 28,
+  "class.new_method": 21,
+  "module.blank_comment": 4
+ },
+ "task_levels": {
+  "not_expressible": 55,
+  "L0_graph_def_nodes": 58,
+  "L3_+insert_new_symbol": 5,
+  "L1_+any_def_by_ast": 4,
+  "L2_+whole_class_replace": 7
+ },
+ "task_levels_cumulative": {
+  "L0_graph_def_nodes": 58,
+  "L1_+any_def_by_ast": 62,
+  "L2_+whole_class_replace": 69,
+  "L3_+insert_new_symbol": 74
+ },
+ "blockers_for_not_expressible": {
+  "py.new_file": 49,
+  "module.imports": 41,
+  "module.statement": 30
+ },
+ "tasks_with_non_python_files": 0,
+ "replay_files": {
+  "ok/exact": 109,
+  "ok/reordered_toplevel": 1,
+  "tool_error:SymbolNotFound": 1,
+  "tool_error:AmbiguousSymbol": 2,
+  "ok/ast_equal": 1
+ },
+ "payload_lines_over_gold_changed_lines": {
+  "median": 6.7272727272727275,
+  "p90": 32.0,
+  "max": 199.0,
+  "n_files": 114
+ }
+}

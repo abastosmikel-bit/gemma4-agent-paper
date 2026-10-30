@@ -1,0 +1,21 @@
+# Competition data must never be committed (tasks, snapshots, graphs, embeddings, patches, traces)
+data/
+*.tgz
+*.npz
+tasks.jsonl
+graphs/
+snapshots/
+embeddings/
+wheels/
+*.patch
+*.diff
+traces/
+logs/
+patches/
+test_outputs/
+results/raw/
+results/**/per_task*.jsonl
+__pycache__/
+*.pyc
+.venv/
+work/

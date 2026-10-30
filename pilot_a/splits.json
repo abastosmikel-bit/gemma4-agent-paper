@@ -1,0 +1,36 @@
+{
+  "skill_build_rich": [
+    "rich_3006",
+    "rich_3061",
+    "rich_3105",
+    "rich_3469",
+    "rich_3472",
+    "rich_3486",
+    "rich_3930",
+    "rich_3935",
+    "rich_4070",
+    "rich_4079"
+  ],
+  "eval_fastapi": [
+    "fastapi_13207",
+    "fastapi_13713",
+    "fastapi_13786",
+    "fastapi_14077",
+    "fastapi_14246",
+    "fastapi_14266",
+    "fastapi_14448",
+    "fastapi_14455",
+    "fastapi_14463",
+    "fastapi_14512",
+    "fastapi_14616",
+    "fastapi_14851",
+    "fastapi_14953",
+    "fastapi_14986",
+    "fastapi_15030"
+  ],
+  "smoke": [
+    "fastapi_13207",
+    "fastapi_13713",
+    "fastapi_13786"
+  ]
+}

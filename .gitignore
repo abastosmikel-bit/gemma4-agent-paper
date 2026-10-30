@@ -1,0 +1,24 @@
+# Competition data must never be committed (rules: no redistribution)
+data/
+*.tgz
+*.npz
+*.whl
+*.safetensors
+tasks.jsonl
+HARNESS_README.md
+snapshots/
+graphs/
+embeddings/
+wheels/
+# Raw traces / patches stay local or on Kaggle
+traces/
+raw/
+*.patch
+*.diff
+*.traj
+*.trace.json
+results/**/raw/
+# Python junk
+__pycache__/
+*.pyc
+.venv/

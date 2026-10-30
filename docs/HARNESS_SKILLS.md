@@ -80,3 +80,18 @@ hide tools until a skill is loaded (read).
   `model.safetensors` = 11.5 GB (per-layer embeddings and the vision/audio towers are unquantized).
   T4 GPUs have no bf16, so vLLM would fall back to fp16. Whether Gemma 4 is numerically stable in
   fp16 is unknown, and the `probe` phase tests it (read; not run).
+
+## 5. Context compaction removes loaded skills (added in the rethink)
+
+- The scorer configures ADK `EventsCompactionConfig`: `token_threshold=14336`, `event_retention_size=5`,
+  `compaction_interval=15`, `overlap_size=2`. This is set in `scripts/inference.py` and the starter
+  notebook, not by the submission (read).
+- ADK's `LlmEventSummarizer._format_events_for_prompt` only includes `part.text`. **Function calls and
+  function responses are dropped from the summariser's input** (read: `google/adk/apps/llm_event_summarizer.py`).
+- A skill body returned by `load_skill` is a function response, so after the next compaction it is
+  gone, not even summarised. The system instruction (and with it an indexed catalog or inlined
+  skills) is never compacted (read).
+- The initial task prompt is a user text event, so it is summarised rather than kept verbatim (read).
+- How soon compaction fires for e4b is unknown. Estimate: after ~5–10 calls, since `read_file`
+  returns up to ~2.5k tokens. The traces record `compaction` events, and `common/trace_parser.py`
+  counts them.

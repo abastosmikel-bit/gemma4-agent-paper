@@ -1,6 +1,6 @@
 # Pilot A (skills as weight-free post-training): interim report
 
-Status 2026-10-30: **stopped at the GPU gate.** Everything that needs no GPU is built and checked
+Status 2026-10-30: **stopped at the GPU gate; plan rethought in §8 (recommendation: pivot to direction B).** Everything that needs no GPU is built and checked
 locally. **No GPU quota used yet (0 L4x4 h).** The next step needs your OK (estimate in §5).
 
 Branch: `pilot/a-skills` (orphan, as requested; this environment's default branch was a
@@ -151,7 +151,225 @@ cross-repo evaluation tasks (fastapi + requests):
 | L4x4 time | ≈ 10–12 h (≈ 20–24 quota h) |
 | Calendar | ≈ 6–8 days, given ~15 L4x4 h/week shared by four pilots and the 12 Nov deadline |
 
-## 8. Questions for you (each changes the research question)
+## 8. Rethink (added before any GPU run; still 0 GPU hours)
+
+Labels: **verified-run** = checked by running the harness code on CPU. **read** = from reading
+source, not run. **estimate** / **hypothesis** = not measured.
+
+### 8.1 The question one level up
+
+A skill is not a weight change. It is text that only changes behaviour if it gets through a chain
+of steps. Its expected benefit is roughly a product:
+
+> benefit ≈ P(**exposed**) × P(**retrieved** when its trigger occurs) × P(**still in context** at that
+> moment) × P(**complied with**, given it is in context) × **gain** of the complied action
+
+| Factor | Meaning | Your four failure causes |
+|---|---|---|
+| exposed | the model knows the skill exists | (not in your list: the harness default) |
+| retrieved | it calls `load_skill` for the right skill | never retrieved |
+| in context at trigger | loaded before the moment it applies, and not yet dropped | retrieved at the wrong moment |
+| complied | its next actions follow the guidance | model too small to act on it |
+| gain | following the guidance actually helps | wrong content |
+
+So the higher-level question is:
+
+**Where along this chain does procedural guidance get lost in a small agent, and is the loss a
+property of the model or of the delivery channel?**
+
+This also sharpens the LoRA analogy. A LoRA skips the first three factors: it is always on, needs
+no retrieval and uses no context. "Can skills act like a LoRA?" therefore splits into two
+questions. First, can the delivery factors be pushed to ~1 cheaply? Second, once they are, is a
+4B model's compliance high enough to matter?
+
+It also explains the prior nulls. Each factor is below 1, and they multiply. An end-to-end resolve
+rate on a few dozen tasks measures only the product, so a null cannot say which factor broke.
+SkillsBench and SWE-Skills-Bench report end-to-end effects. Neither decomposes them (abstract-level reading).
+
+### 8.2 What this harness can and cannot separate
+
+| Factor | Observable in swegemma traces | How we can manipulate it |
+|---|---|---|
+| exposure | catalog in prompt or not | hidden (ADK default) / indexed / inline: all three already buildable |
+| retrieval | `load_skill` calls, which skill, at which step | inline removes it; description wording |
+| in context at trigger | step of load vs step of trigger; `compaction` events are in the trace (parser already counts them) | inline (system prompt survives compaction) vs on-demand |
+| compliance | only if a skill's prescribed action is observable, e.g. "after a `FileEditError`, the next call is `read_file` on that file" | inject the guidance exactly at the trigger (replay, direction B) |
+| gain | **per-event** outcomes: does the retried edit succeed, does the repeat stop | same |
+
+Per-event outcomes are the key to statistical power. A task has one resolved/unresolved bit but
+many trigger events (errors, edits, submits). Hundreds of events give power that 30 paired task
+outcomes never will.
+
+What the harness cannot separate on its own:
+- **Content vs capacity when compliance is low.** Partial fix: frontier-written content as an upper
+  bound on content quality, and a larger Gemma as an upper bound on capacity.
+- **Causal gain from observed compliance.** Fix: an intervention (replay), not correlation.
+
+### 8.3 What the evidence says so far
+
+- **Exposure is ~0 by default** (verified-run). ADK 1.36.1 never puts the skill catalog in the
+  prompt. Every competitor who drops a `skills/` folder into a submission without listing the
+  skills in the prompt is running a near-inert skill library, and an end-to-end metric would show
+  only a null. So yes: your hunch is right, the hidden names are part of the answer, not a setup detail.
+- **On-demand skills have a short lifetime in this harness** (read).
+  - The mechanism: ADK's compaction summariser formats only plain *text* parts and drops every
+    function call and function response (`apps/llm_event_summarizer.py`). A body returned by
+    `load_skill` is a function response, so it is not even summarised. It disappears at the next
+    compaction.
+  - What survives: the system instruction, and with it an indexed catalog or inlined skills.
+  - Who sets it: the scorer's `inference.py` (threshold 14,336 tokens, last 5 events kept). It
+    is part of the target environment, not something a submission can change.
+  - Estimate: `read_file` returns up to ~2.5k tokens, so the threshold is crossed after roughly
+    5–10 calls. A skill loaded at the start is likely gone before its trigger fires late in the
+    episode. Hypothesis until phase-2 traces count compactions.
+  - The original task prompt is a text part, so it gets *summarised*, not kept verbatim (read).
+- **The baseline already contains inline guidance** (read). The starter `system.md` is a
+  workflow-plus-anti-patterns skill set. It overlaps with my hand-written skills (targeted tests,
+  don't touch tests) and tells the model to finish in 8–10 turns. Baseline vs hand-written would
+  therefore measure a small marginal content gain, delivered through the weakest channel,
+  against an instruction to hurry. A null there would teach us nothing.
+- **Prior work** (abstract-level) points at retrieval and compliance, not just content:
+  - very small models fail to select skills (2602.16653);
+  - models ≤7B often ignore even oracle-retrieved context (2603.11513, QA only);
+  - agents "acknowledge skills but don't invoke them" (SkillsBench);
+  - harmful skills anchor agents on templates (SWE-Skills-Bench), so compliance can also be *too* high.
+- **No Gemma behaviour has been measured yet.** Everything above is about the channel, not the model.
+
+### 8.4 Is the four-arm experiment the right one?
+
+Mostly no, for four reasons.
+1. **It varies the wrong factor.** It changes content source (hand / self / frontier) and holds
+   delivery fixed at the weakest channel (hidden-or-indexed, on demand, compacted away). If most
+   loss is in delivery, content differences are invisible.
+2. **It is underpowered.** 30 paired task outcomes detect only large resolve-rate changes. Content
+   differences in prior work are a few points.
+3. **Content is confounded with retrieval.** Better-written descriptions get loaded more often.
+   "Frontier skills help" could just mean "frontier descriptions get clicked".
+4. **"Like a LoRA" is not testable as designed.** There is no always-on condition (and no real
+   LoRA). What we *can* test is always-on in-context vs on-demand.
+
+Keep the three content sources, but compare them where delivery is held fixed (direction B).
+
+### 8.5 Three reframed directions
+
+**A. Guidance funnel (diagnostic).**
+
+Design:
+- Conditions: baseline, hidden catalog (ADK default), indexed catalog, inline (always on).
+- All conditions use the same three hand-written skills, rewritten so each has an observable
+  trigger and an observable prescribed action.
+- Tasks: 15 fastapi × 1 seed.
+- Each funnel factor is measured from the traces.
+
+| | |
+|---|---|
+| **Claim** | "For a 4B agent in a compacting harness, most of a skill's potential effect is lost at stage X". Plus a concrete platform finding: ADK's default and its compaction make on-demand skills near-inert. |
+| **New vs prior** | Prior work reports end-to-end effects. This locates the loss, with delivery under experimental control. I found the compaction mechanism in no scanned skills paper (to my knowledge; needs a check). |
+| **Weakness** | A diagnostic, not a method. Alone, it fails your ambition rule. |
+| **L4x4 cost** | phase-2 baseline 0.9 h + 45 runs ≈ 1.4 h typical (3.0 worst) → **≈ 2.3 h** plus smoke |
+
+**B. Counterfactual trigger replay: an acceptance test for skills (method).**
+
+*Prefix replay*, defined:
+1. Take a baseline trace.
+2. Cut it just before a trigger event, e.g. right after a `FileEditError`.
+3. Rebuild the conversation up to that point.
+4. Ask the model for its next action twice: as it was, and with the skill text inserted at that
+   moment.
+5. Compare the two next actions.
+
+Each sample is one generation, with no sandbox, so it is cheap and yields hundreds of events.
+
+Each skill carries a *contract*:
+- a trigger predicate (when it applies, checked on the trace);
+- an action predicate (what the next call should look like);
+- the text itself.
+
+All three distillers (hand, self, frontier) must emit the contract.
+
+What it is for:
+1. **Measure compliance directly**, per content source, with delivery held fixed. This fixes the
+   four-arm design.
+2. **Separate "too small to act" from "not retrieved".** If behaviour does not shift even when
+   the skill is injected at the right moment, the problem is the model or the content, not the
+   delivery.
+3. **Verified self-distillation.** e4b's own distilled skills are kept, or rewritten using the
+   replay feedback, only if they shift the next action on *held-out* prefixes. Then one
+   end-to-end check validates the result.
+
+The cross-repo test stays: skills come from rich traces and are replayed on fastapi prefixes.
+
+| | |
+|---|---|
+| **Claim** | (hypothesis) Next-action replay predicts end-to-end skill value at a fraction of the cost. Replay-verified self-distillation turns a 4B model's own failures into skills that change its behaviour, where unverified distillation (SkillsBench: −1.3 pp) does not. |
+| **New vs prior** | SkillLens / SkillsBench / SWE-Skills-Bench evaluate end to end. CODESKILL trains an extractor on end reward. A trigger-conditional counterfactual replay as an acceptance test, plus skills with checkable contracts, is not in the work scanned so far. **Needs a targeted novelty check before committing** (no GPU, a Sonnet scout). |
+| **Risks** | (1) Rebuilding faithful context (thinking blocks, compaction summaries) is fiddly, so start with prefixes before the first compaction. (2) A next-action shift may not turn into resolved tasks; the end-to-end check tests exactly that. (3) It needs enough trigger events in baseline traces (likely for e4b; kill criterion below). |
+| **L4x4 cost** | phase-2 baseline 0.9 h + replay ≈ 0.5–1 h (estimate: a few hundred prefixes × 4 conditions × 2 samples, prefix-cached) + one end-to-end validation (2 conditions × 15 tasks) ≈ 1.0 h → **≈ 2.4–2.9 h** plus smoke |
+
+**C. Does the bottleneck move with model size? (generalisation).**
+
+Design: run the funnel and the replay on e2b, e4b and 12b.
+
+| | |
+|---|---|
+| **Claim** | "Load-on-demand pays only above a size threshold. Below it, guidance must be always-on." A design rule for any small-model agent platform. |
+| **New vs prior** | I found no work that maps where skill effects are lost against model size within one family. |
+| **L4x4 cost** | baseline traces for e2b and 12b (15 fastapi tasks each, ≈ 0.5 + 1.2 h; 12b timing is a guess) + replay ≈ 0.5 h each → **≈ 3 h on top of B**. Beyond the pilot ceiling; full-study only. |
+
+### 8.6 Recommendation
+
+**Make B the core, use A's delivery ladder as B's end-to-end check, and do C only if B works
+and quota remains.**
+
+- **Why B:**
+  - It is the only direction that is a *method* (replay-verified distillation of skills with contracts).
+  - It has the statistical power that end-to-end runs lack.
+  - It keeps the cross-repo split and all three content sources.
+  - It answers the higher-level question (delivery vs compliance) by intervention, not correlation.
+- **Why not A alone:** it is a measurement paper.
+- **Why not C now:** it does not fit the budget.
+
+**Unchanged:** the next GPU steps. Every direction needs the smoke run and then the phase-2
+baseline traces. I suggest extending the smoke run from 2 to 4 delivery conditions
+(baseline / hidden / indexed / inline × 3 tasks). It would show early whether e4b ever loads a
+skill, and whether compaction fires before triggers. That costs ≈ 0.7 h typical (1.4 h worst)
+instead of 0.4.
+
+**Budget honesty:** B plus the extended smoke run is ≈ 3.1–3.6 h typical, slightly over your 3 h
+pilot ceiling. Ways to fit:
+- keep the 2-condition smoke run (−0.3 h); or
+- validate end to end on 10 instead of 15 tasks.
+
+**Code still to write (no GPU, ~1 day):**
+- the replay tool (rebuild an OpenAI-format conversation from an ATIF trace and query vLLM);
+- skill contracts and trigger/action detectors;
+- make the distiller emit contracts;
+- fix the inline arm (its `verify-before-submit` text refers to the script tool, which is absent there).
+
+**Kill criteria:**
+- **Too few trigger events:** phase-2 traces show fewer than ~50 across 25 tasks. Then replay
+  lacks power: fall back to A.
+- **No shift at all:** replay shows no next-action shift for *every* skill, frontier-written
+  included. Then the answer is "too small to act". Report that, and consider 12b before spending
+  more.
+
+## 9. Open questions, revisited after the rethink
+
+1. **Skill visibility** (was: index on or off?). No longer a default for me to pick. It is the
+   *exposure* factor, so both hidden and indexed become experimental conditions. Hidden is also
+   what a typical competitor's submission does. **OK to treat it as a factor?**
+2. **Inline control** (was: optional). Now **essential**. It is the always-on condition, the only
+   in-context analogue of a LoRA, and the only skill text that survives compaction. Needs the
+   small fix noted in 8.6.
+3. **Per-task budget 15 min / 40 calls.** Keep it for end-to-end runs (cost). But it now
+   interacts with the question: longer episodes mean more compactions, so more loss of on-demand
+   skills. Compaction counts will be reported per task. Replay (B) barely depends on the budget.
+   If most tasks hit the cap in phase 2, the validation run should use 60 calls.
+4. **New: pivot to direction B** (replay-verified skills, with A as its end-to-end check)?
+5. **New: extended smoke run** with 4 delivery conditions (≈ 0.7 h typical, 1.4 h worst), or the
+   original 2 conditions (≈ 0.4 h)?
+
+Original questions as first asked:
 
 1. **Skill visibility.** I list skill names and descriptions in the system prompt in all skill
    arms. Without that, the model has to call `list_skills` first. Keep it (my default)? Or also

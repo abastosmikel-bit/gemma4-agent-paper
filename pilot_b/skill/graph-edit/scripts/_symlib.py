@@ -315,9 +315,13 @@ def write_checked(root, rel, old_src, new_src):
         f.write(new_src)
 
 
-def edit_symbol(root, symbol, new_source, allow_rename=False):
+def edit_symbol(root, symbol, new_source=None, allow_rename=False, old_string=None, new_string=None):
     target = resolve(root, symbol)
     old_src = read(root, target.rel)
+    if old_string is not None:
+        return _scoped_replace(root, target, old_src, old_string, new_string if new_string is not None else "")
+    if new_source is None:
+        raise SymError("MissingArgument", "give new_source (whole new definition) or old_string+new_string (change inside the symbol)")
     lines, node = parse_snippet(new_source)
     tk, nk = target.kind, KIND[type(node)]
     if (tk == "class") != (nk == "class"):
@@ -334,6 +338,41 @@ def edit_symbol(root, symbol, new_source, allow_rename=False):
     write_checked(root, target.rel, old_src, new_src)
     return {"status": "ok", "symbol": target.qname, "file": target.rel,
             "old_lines": [start, target.end], "new_lines": [start, start + len(new_block) - 1],
+            "diff": unified(target.rel, old_src, new_src)}
+
+
+def _scoped_replace(root, target, old_src, old_string, new_string):
+    """Replace old_string inside the symbol's span only; uniqueness is checked within the symbol."""
+    lines = old_src.split("\n")
+    a, b = target.start - 1, target.end
+    span = "\n".join(lines[a:b])
+    n = span.count(old_string)
+    how = "exact"
+    if n == 0:   # tolerate indentation drift: match line-by-line on stripped text, re-indent replacement
+        ol = [x.strip() for x in old_string.strip("\n").split("\n")]
+        sl_ = lines[a:b]
+        hits = [i for i in range(len(sl_) - len(ol) + 1) if [x.strip() for x in sl_[i:i + len(ol)]] == ol]
+        if len(hits) == 1:
+            i = hits[0]
+            base = _indent(sl_[i])
+            nl_ = textwrap.dedent(new_string.strip("\n")).split("\n") if new_string.strip() else []
+            rep = [(" " * base + x) if x.strip() else "" for x in nl_]
+            new_span_lines = sl_[:i] + rep + sl_[i + len(ol):]
+            new_src = "\n".join(lines[:a] + new_span_lines + lines[b:])
+            write_checked(root, target.rel, old_src, new_src)
+            return {"status": "ok", "symbol": target.qname, "file": target.rel, "match": "indent_flexible",
+                    "diff": unified(target.rel, old_src, new_src)}
+        n = len(hits)
+        how = "flexible"
+    if n == 0:
+        raise SymError("NoMatch", f"old_string not found inside {target.qname} (lines {target.start}-{target.end}); "
+                       "use show_symbol to see its current source")
+    if n > 1:
+        raise SymError("MultipleMatches", f"old_string occurs {n} times inside {target.qname} ({how} match); add context lines")
+    new_span = span.replace(old_string, new_string, 1)
+    new_src = "\n".join(lines[:a] + new_span.split("\n") + lines[b:])
+    write_checked(root, target.rel, old_src, new_src)
+    return {"status": "ok", "symbol": target.qname, "file": target.rel, "match": "exact",
             "diff": unified(target.rel, old_src, new_src)}
 
 

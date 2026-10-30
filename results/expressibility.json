@@ -1,11 +1,11 @@
 {
  "tasks": 129,
  "op_categories": {
-  "def": 536,
+  "def": 538,
   "module.imports": 179,
   "async_def": 92,
   "module.statement": 86,
-  "class.body_stmt": 54,
+  "class.body_stmt": 52,
   "module.new_symbol": 28,
   "class.new_method": 21,
   "module.blank_comment": 4
@@ -30,10 +30,8 @@
  },
  "tasks_with_non_python_files": 0,
  "replay_files": {
-  "ok/exact": 109,
+  "ok/exact": 112,
   "ok/reordered_toplevel": 1,
-  "tool_error:SymbolNotFound": 1,
-  "tool_error:AmbiguousSymbol": 2,
   "ok/ast_equal": 1
  },
  "payload_lines_over_gold_changed_lines": {

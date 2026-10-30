@@ -1,0 +1,102 @@
+{
+ "summary": {
+  "tasks_run": 5,
+  "gold_pass": 2,
+  "base_fail_gold_pass (informative)": 2,
+  "replay_pass_on_informative": 2,
+  "replay_equals_gold_outcome": 5,
+  "replay_failed_to_build": 0
+ },
+ "tasks": [
+  {
+   "instance_id": "rich_4077",
+   "repo": "rich",
+   "level": "L3_+insert_new_symbol",
+   "base": {
+    "rc": 1,
+    "summary": "1 failed, 3 passed in 0.12s"
+   },
+   "gold": {
+    "rc": 0,
+    "summary": "4 passed in 0.11s"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 0,
+    "summary": "4 passed in 0.15s"
+   }
+  },
+  {
+   "instance_id": "rich_4079",
+   "repo": "rich",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "1 failed, 7 passed in 0.21s"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "1 failed, 7 passed in 0.23s"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "1 failed, 7 passed in 0.21s"
+   }
+  },
+  {
+   "instance_id": "rich_4076",
+   "repo": "rich",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 1,
+    "summary": "1 failed in 0.13s"
+   },
+   "gold": {
+    "rc": 0,
+    "summary": "24 passed in 0.14s"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 0,
+    "summary": "24 passed in 0.15s"
+   }
+  },
+  {
+   "instance_id": "fastapi_15589",
+   "repo": "fastapi",
+   "level": "L0_graph_def_nodes",
+   "base": {
+    "rc": 3,
+    "summary": "1 error in 0.36s"
+   },
+   "gold": {
+    "rc": 3,
+    "summary": "1 error in 0.42s"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 3,
+    "summary": "1 error in 0.36s"
+   }
+  },
+  {
+   "instance_id": "fastapi_14986",
+   "repo": "fastapi",
+   "level": "L3_+insert_new_symbol",
+   "base": {
+    "rc": 1,
+    "summary": "1 error in 0.39s"
+   },
+   "gold": {
+    "rc": 1,
+    "summary": "1 error in 0.38s"
+   },
+   "replay_status": "ok",
+   "replay": {
+    "rc": 1,
+    "summary": "1 error in 0.37s"
+   }
+  }
+ ]
+}

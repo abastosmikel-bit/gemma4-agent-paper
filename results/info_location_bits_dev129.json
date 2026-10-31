@@ -1,0 +1,19 @@
+{
+ "n_tasks_single_existing_file_with_functions": 82,
+ "file_hint_bits": {
+  "median": 5.3,
+  "q1": 4.08,
+  "q3": 6.2
+ },
+ "function_hint_bits_given_file": {
+  "median": 4.46,
+  "q1": 3.32,
+  "q3": 5.22
+ },
+ "total_location_bits": {
+  "median": 10.1,
+  "q1": 9.07,
+  "q3": 10.26
+ },
+ "unit": "log2 of candidate definitions eliminated (code graph, tests/docs excluded)"
+}

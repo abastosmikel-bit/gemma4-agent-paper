@@ -1,6 +1,6 @@
 # Pilot C — Where does a small agent break? (interim report)
 
-Status: **CPU stage done. You approved notebook 01 (smoke + timing, hard stop 1.75 L4x4 h), a 50-call / 15-min budget, and small single-file tasks.** GPU hours used so far: **0**.
+Status: **CPU stage done. Notebook 01 is on hold pending this rethink (§8); notebook 00 (CPU) can run.** GPU hours used so far: **0**.
 Branch: `pilot/c-bottleneck` (orphan, as requested; the environment allowed this branch name).
 
 ## 1. What I did
@@ -118,6 +118,8 @@ one family, and intervention rather than observation.
 
 ## 6. Plan, cost, and provisional go/no-go
 
+> Superseded in part by §8.6: run 01 with 40 calls; replace 02 by the D1 probe + a 12b validation slice.
+
 | Step | Accelerator | Estimate (L4x4 h) | Hard stop | Status |
 |---|---|---|---|---|
 | 00 gold check, all 129 tasks | CPU | 0 | — | ready |
@@ -155,6 +157,160 @@ if only O-all helps).
 
 ## 7. Files
 
-`common/` shared code · `pilot_c/` hints, selection, Kaggle runner · `notebooks/` generated
-notebooks + how to run · `tests/` unit tests, mock-LLM end-to-end and notebook dry runs ·
-`results/` aggregate JSONs only.
+`common/` shared code · `pilot_c/` hints, selection, Kaggle runner, CPU information checks ·
+`notebooks/` generated notebooks + how to run · `tests/` unit tests, mock-LLM end-to-end and
+notebook dry runs · `results/` aggregate JSONs only.
+
+## 8. Rethink (no GPU used)
+
+### 8.1 The question one level up
+
+Problems with "which stage binds at each size", including your framing:
+- **It assumes a serial pipeline with one bottleneck.** Agents don't work like that. A test name
+  also localizes, a location hint changes what gets read, and a hint given at step 0 changes the
+  whole trajectory. So O-x measures the effect of a piece of information on the whole run, not "a stage".
+- **"Binding" is relative to the budget and the scaffold.** With 50 calls, running out of calls can
+  be the binding stage. The sample agent (10 tools, a sub-agent, thinking 4,096) is tuned for 31B,
+  so a small model may break on the scaffold, not on any stage.
+- **Both ends are nearly known.** For 31B the forum says "found, not fixed". For e4b, 0/31 means
+  everything fails. Resolve rate on 15 tasks moves in steps of 7 points: too coarse to rank stages.
+- **"Size" is not one clean variable.** E2B/E4B are "effective-parameter" models and 12B needs an
+  architecture override, but within one family it is as clean as it gets.
+
+The higher-level question:
+> **For a model of size S, how much of its failure comes from missing information (which a tool
+> or harness could supply), and how much from being unable to use information it already has?
+> And which of the missing information can be found in the repository at all?**
+
+Put operationally: per task and size, what is the cheapest piece of information that turns a
+failure into a success (its *information threshold*)? How does that threshold move with size?
+
+Why this is useful outside the competition:
+- **Headroom.** The gap between oracle and no-hint is the most any retrieval or localization tool
+  can buy at size S. That tells tool builders where to invest for small models.
+- **Training.** The gap between "information supplied" and "information used" tells trainers which
+  privileged evidence is worth distilling at which size. SWE-Ladder makes exactly this choice by hand.
+- **Benchmarks.** Separating unfindable information (only in the hidden test) from agent failure
+  matters to anyone building SWE-style benchmarks.
+
+### 8.2 What the CPU data checks already say (measured; heuristics marked)
+
+| Check | Result | What it means for the question |
+|---|---|---|
+| Gold-patch ceiling (local sandbox) | 73/129 tasks solvable | Failures fall into three buckets, not two: missing information, can't use it, and environment. Headroom must be measured against the gold ceiling, not 100%. |
+| Unfindable requirement (heuristic; `results/info_spec_dev129.json`) | 21/129 tasks (16%): hidden test needs a new name (12) or exact message (16) the issue never states. 3/70 among pilot-eligible tasks | Part of any O-test gain is specification leak, not "reproduction". No search can close that gap. |
+| Location information (`results/info_location_bits_dev129.json`, 82 single-file tasks) | File hint ≈ **5.3 bits**, function hint ≈ **4.5 more bits** (medians); ≈10 bits total, about 1 definition in 1,000 | The two hints carry similar amounts of information. The forum says 31B opens the gold file by call 2–3 in ~84% of runs, so the first ~5 bits are cheap for 31B. Open: do small models find the other ~4.5, and can they use them? |
+| Tests that exist before the fix | 97/129; in 32 the test files are all new | "Reproduction" is undefined for a quarter of the tasks. Better axes: **WHERE** (location), **WHAT** (expected behaviour, required names and messages), **HOW** (the change). |
+| Sub-agent visibility (ADK source, confirming pilot A) | `code_analyzer_agent` calls are invisible in the root trace | Process metrics such as "viewed gold file" are lower bounds. A replay instrument must treat the sub-agent's answer as a fixed observation. |
+
+### 8.3 One instrument instead of three studies
+
+All three pilots hold content fixed and vary one thing. They can be written as one intervention
+`(state, information, channel)` with an outcome measured at some `depth`:
+
+| Axis | Values |
+|---|---|
+| state *s* | step 0 (issue only), or a replayed prefix of the model's own trajectory (after reading the gold function, just before the first edit, …) |
+| information *x* (a ladder) | none → WHERE-file → WHERE-function → WHAT (test names, required names and messages) → HOW in words → HOW exact (the diff) |
+| channel *c* | issue text · skill text (the only one also legal in a real submission) · tool output or user turn at step *t* |
+| depth *d* | 1: teacher-forced log-likelihood of the reference action. Prefill only, continuous, cannot floor. 2: one sampled next action, checked (right file? edit applies? tests pass?). 3: full rollout (resolved) |
+
+- Pilot C = (step 0, WHERE/WHAT, issue text, depth 3).
+- Pilot A = (replayed step *k*, skill, skill channel, depth 3).
+- Pilot B = (state at the edit, HOW exact, prompt, depth 2).
+
+One harness, one task set, one budget. The O0 runs then become shared baselines and pool across
+pilots for the noise estimate. Per (task, size), the instrument yields an information threshold:
+the lowest rung that works. It is ordinal, so it can be analysed like item difficulty. The
+continuous version, likelihood gain per rung, is close to "usable information" (V-information:
+Xu et al. 2020; Ethayarajh et al. 2022). That is to be cited; not re-verified this session.
+
+### 8.4 If e4b solves nothing without hints
+
+- **Where the ladder switches on.** If e4b only succeeds at HOW-exact, the failure is expression
+  (Pilot B's question). If it fails even there, the failure is agent mechanics: look at malformed
+  calls, failed edits, budget exhaustion.
+- **Depth 1 never floors.** The log-likelihood gain of the gold action per rung is measurable even
+  at 0% resolved.
+- **Process metrics.** Viewed gold file, edited gold file or function, first gold-view call,
+  repeat share. The forum says e4b edits the wrong file in 13/31, so it often edits something.
+- **A clean "can't use even the exact change" is itself a result**, and actionable for the
+  small-footprint bonus.
+
+### 8.5 Directions
+
+| | D1 Information-ladder probe | D2 Findable vs unfindable, and hint trust | D3 Counterfactual replay for failure attribution |
+|---|---|---|---|
+| Claim | Per size: how much each rung raises the chance of the correct action (find vs use), and the per-task threshold | Oracle gains split into findable vs unfindable parts. Smaller models are hurt more by a wrong hint, so retrieval for small models must favour precision (a gating rule) | Injecting the missing fact at step *k* of a failed run and continuing finds the earliest step that flips the outcome: interventional failure attribution with no LLM judge |
+| Design | 40 gold-solvable tasks × ~7 rungs × 2 states × 4 sizes, depths 1–2. Depth-2 edits are verified in a free CPU notebook | Rollouts. 12b: O0, WHERE-func, WHAT-unfindable-only, WRONG-WHERE (a plausible wrong function in the same file). 31b: O0 and WRONG-WHERE | Failed O0 runs of e4b/12b, injection at {0, first read, first edit, before submit}, continuation rollouts; reuse pilot A's replayer |
+| New vs Loc2Repair | Full ladder up to the exact diff (Loc2Repair: correct file set only), one family, four sizes, floor-free measure | Wrong hints and the findable/unfindable split (Loc2Repair has neither) | Injection mid-trajectory (Loc2Repair injects at step 0 only) |
+| New vs SWE-Ladder | Measures at inference which evidence each size can use: the choice SWE-Ladder hard-codes for one 4B model | Inference-time; SWE-Ladder only trains on correct evidence | SWE-Ladder never replays |
+| L4x4 cost (estimated) | **≈2 h** (range 1.5–3; D1-lite: 20 tasks, depth 1, three sizes ≈0.8 h) | ≈5 h | 10-task demo ≈3–4 h; full ≈8–10 h |
+| Engineering | ~1.5 days: rebuild the agent's exact chat context (tool schema, chat template) from real traces; vLLM `prompt_logprobs` | ~0.5 day: two new hint renderers; runner reused | 2–3 days; depends on pilot A's replayer |
+| Main risk | Depth 1–2 may not predict rollouts (hence validation) | 12b may also sit near the floor | Cost; sandbox replay fidelity |
+
+How the D1 cost is built:
+- ~280 contexts per size of ~10k tokens (prefill), plus one short generation each;
+- 4 server start-ups ≈ 25 min;
+- 31B ≈ 1 h; 12b ≈ 0.5 h; e2b/e4b ≈ 10–15 min each.
+
+These are guesses until notebook 01 has measured real throughput.
+
+### 8.6 Recommendation
+
+1. **Make D1 the core**, with one D2 slice as validation:
+   - 12b at O0 vs O-all on the same 35–40 tasks (≈1.5 h). This reuses the built pilot notebook
+     with a different PLAN.
+   - It tests whether depth-1/2 probe gains predict rollout gains. If they do, future studies can
+     use probes at a fraction of the cost. That is the general, reusable part, and a
+     Best-New-Resource candidate: scripts that rebuild the ladder for any SWE-style dataset with
+     gold patches.
+   - Total ≈ 3.5–4 h with 01, against ≈11–16 h for the original grid.
+2. **Bridge to a method (hypothesised).**
+   - If small models can use WHERE but don't find it: build a localization skill or sub-agent.
+     That is a legal channel, and pilot A's.
+   - If they can't use even HOW-exact: fix edit expression (pilot B).
+3. **Notebook 01: run it, but with the budget changed to 40 calls / 15 min (§8.7). Otherwise as
+   built.** It still earns its ≈1.3 h because every direction needs:
+   - all four servers proven on Kaggle, including 12B's override;
+   - real per-size traces to rebuild the probe contexts exactly;
+   - per-size minutes per task to price the validation rollouts.
+
+   The e4b O-all arm is a cheap first look at whether hints change behaviour.
+4. **Do not run notebook 02 as built.** 15-task e4b rollouts are the design most likely to floor.
+5. **Run notebook 00 regardless.** The gold ceiling matters for every direction.
+
+### 8.7 Budget: switch from 50 to 40 calls?
+
+**Yes, switch to 40 calls / 15 min, matching pilot A.**
+- Identical O0 settings make the pilots' no-hint runs replicates, which gives a better noise
+  estimate for free.
+- The process metrics become directly comparable.
+- Cost: 40 binds more often for small models that loop. Log the share of runs that exhaust the
+  budget (`budget_tool_calls == 40`) so that binding is visible rather than hidden.
+
+I have **not** edited the built notebooks. It is one line (`BUDGET = dict(timeout_seconds=120,
+max_tool_calls=40, max_time_minutes=15)`) in the config cell of 01/02. Edit it in the Kaggle UI or
+tell me to regenerate. Also worth aligning: use pilot A's shared split (`sample_ids`) intersected
+with the gold-solvable tasks, so the baselines cover the same tasks.
+
+## 9. `common/` here vs `pilot/a-skills` (read-only comparison; nothing changed there)
+
+| Topic | pilot A `common/` | pilot C `common/` | Merge suggestion |
+|---|---|---|---|
+| Files | `tasks.py`, `trace_parser.py`, `metrics.py`, README | `tasks.py`, `trace.py`, `metrics.py`, `diffs.py`, `locate.py` | Keep A's names; add C's `diffs.py` and `locate.py` |
+| Task code | Loader + deterministic per-repo split `sample_ids(repo, n, seed)` | Loader + snapshot reader + gold locations (files, AST functions, scorer test names) | Union; use A's split as the shared one |
+| Trace parsing | Pairs k-th call with k-th response per tool; also reads tokens, thinking and compaction counts, and agent texts | Same pairing; also reads harness `continuation_nudge` events; no token counts | Use A's parser; add C's nudge events |
+| Sub-agent calls | Documented as invisible in the root trace | My docstring claimed they were included. **Wrong**, now corrected | Adopt A's statement |
+| `tool_calls` / harness count | `tool_calls`, `harness_tool_calls` | `tool_calls`, `budget_tool_calls` | Rename C to `harness_tool_calls` |
+| Error detection | `status=="error"`, or `error_code`/`error` without status (skill tools) | `status=="error"` only, so it misses skill-tool errors | Take A's rule |
+| Malformed calls | Unknown tool via the declared tool list; error types incl. skill codes (`INVALID_ARGUMENTS`, `SKILL_NOT_FOUND`, …); `ValueError` containing "not found"/"argument"; raw `<\|tool_call>` text | Fixed error types + message patterns (unknown tool, missing or unexpected arguments, `start_line > end_line`); "unparsed" = the harness's truncated-tool-call nudge | Union of rules. Report raw-marker texts and truncation nudges as separate counts |
+| Skill tools | 4 (no `search_skills`), plus load breakdown and `skill_load_rate` | 5 (incl. `search_skills`), count only | A's breakdown, plus `search_skills` |
+| Tokens | From trace step metrics | From `TaskResult.total_tokens` (was 0 in my mock run) | A's |
+| Aggregates | Pooled shares, `failed_edit_share`, `submit_rate` | Pooled and per-task-mean shares, totals, `submitted_share` | Pooled as primary; agree on names |
+| Statistics | `mcnemar_exact`, `paired_bootstrap`, `seed_noise` | `paired_flips` (McNemar keyed by task id) | A's set + keying by task id |
+| Localization metrics | — | viewed, edited and first-view of gold file/function (needs gold) | Keep as an optional C module |
+| Tests | Builds a trace with swegemma's own `SessionTrace` writer | Synthetic AST tests + full harness run against a mock LLM | Keep both |
+
+Repeat-call and failed-edit definitions are identical. Malformed-call definitions differ (above),
+so the pilots' `malformed_share` numbers are **not comparable** until merged.

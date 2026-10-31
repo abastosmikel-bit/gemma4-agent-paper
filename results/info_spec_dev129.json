@@ -1,0 +1,11 @@
+{
+ "n_tasks": 129,
+ "tasks_requiring_new_name_or_string": 29,
+ "tasks_with_unfindable_requirement": 21,
+ "  of_which_name": 12,
+ "  of_which_string": 16,
+ "unfindable_among_all_new_test_file_tasks": "6/32",
+ "unfindable_among_existing_test_file_tasks": "15/97",
+ "method": "heuristic, see pilot_c/info_checks.py docstring",
+ "unfindable_among_pilot_eligible": "3/70"
+}

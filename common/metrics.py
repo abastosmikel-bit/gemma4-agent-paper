@@ -4,7 +4,11 @@ Common metric set (identical definitions in every pilot):
   resolved          scorer verdict (Phase 2 pytest + JUnit validation)
   wall_s            TaskResult.duration_seconds (setup + agent + verification)
   agent_s           last event timestamp in the trace (time inside the agent loop)
-  tool_calls        tool_call events in the trace (all agents, incl. sub-agents)
+  tool_calls        tool_call events in the ROOT trace. Calls made inside an AgentTool sub-agent
+                    (e.g. code_analyzer_agent) run in a separate ADK Runner and are NOT in the
+                    trace; only the AgentTool call itself is (verified in google-adk 1.36.1
+                    tools/agent_tool.py; pilot A found this first). Localization metrics are
+                    therefore lower bounds when the agent delegates reading to the sub-agent.
   budget_tool_calls harness-counted calls (TaskResult.tool_calls; budget-gated tools only)
   repeat_share      share of tool calls identical (same tool + canonical JSON args) to an
                     earlier call in the same task
@@ -79,7 +83,7 @@ def task_metrics(
     gold: dict[str, Any] | None = None,
     agent_patch_scopes: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Compute the common metric row for one task.
+    """Compute the common metric row for one task (root-agent calls only, see module doc).
 
     result: a TaskResult row (task_results.jsonl line or TaskResult.model_dump()).
     events: parsed trace (common.trace.load_trace / parse_trace).

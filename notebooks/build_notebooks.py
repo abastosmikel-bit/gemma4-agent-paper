@@ -22,6 +22,46 @@ WHEELHOUSE = "dataset `metric/gemma-4-developer-agent-wheelhouse`"
 GEMMA = ("models `google/gemma-4` → Other → `gemma-4-e2b-it-qat-w4a16-ct`, `gemma-4-e4b-it-qat-w4a16-ct`, "
          "`gemma-4-12b-it-qat-w4a16-ct`, `gemma-4-31b-it-qat-w4a16-ct` (version 2)")
 L4_NOTE = "The **GPU L4 x4** option only appears after the competition `gemma-4-developer-agent` is attached as an input."
+STARTER = "https://www.kaggle.com/code/ryanholbrook/getting-started-gemma-4-developer-agent"
+ENV_NOTE = ("These notebooks must run in the **official starter's pinned Kaggle environment (Python 3.12)**. New Kaggle "
+            "notebooks default to Python 3.13, and pip then rejects the wheelhouse's cp312 wheels.")
+
+
+def env_steps(sp: dict) -> list[str]:
+    """Exact UI steps to run notebook `sp` in the starter's pinned environment."""
+    title = sp["file"][:-6]
+    acc = "None" if sp["accelerator"].startswith("None") else "GPU L4 x4"
+    up = (f"Add input → Your Work → Notebooks → `{SPECS[sp['upstream']]['file'][:-6]}` (its output)."
+          if sp["upstream"] else "No earlier notebook output is needed.")
+    models = ("Keep the four Gemma 4 models that came with the copy." if acc != "None"
+              else "The Gemma 4 models that came with the copy are not needed (you can remove them).")
+    return [
+        f"1. Open the official starter: {STARTER} and click **Copy & Edit**. The copy keeps the starter's pinned "
+        "environment (Python 3.12) and its inputs: the competition, the wheelhouse and the four Gemma 4 models.",
+        f"2. In the copy: **File → Import Notebook** → upload `notebooks/{sp['file']}` from branch `pilot/c-bottleneck`. "
+        "This replaces the cells; the environment and inputs stay.",
+        f"3. Rename the notebook (title, top left) to `{title}`.",
+        f"4. Right panel → **Settings**: Environment = **Pin to original environment** (do not switch to "
+        f"\"Always use latest environment\"); Accelerator = **{acc}**; Internet = **Off**.",
+        f"5. Inputs: {up} {models}",
+        "6. **Save Version → Save & Run All**. The first code cell prints the Python version and stops within seconds "
+        "if it is not 3.12. In that case the environment is not the starter's: redo steps 1–4.",
+    ]
+
+
+ENV_CHECK = """
+# Environment check (must stay the first code cell)
+import sys
+print('Python', sys.version)
+EXPECTED = (3, 12)   # the official starter's pinned Kaggle environment; the wheelhouse is built for cp312
+if sys.version_info[:2] != EXPECTED:
+    raise RuntimeError(
+        f'WRONG ENVIRONMENT: this session runs Python {sys.version_info[0]}.{sys.version_info[1]}, these notebooks need '
+        f'Python {EXPECTED[0]}.{EXPECTED[1]}. Open the official starter (ryanholbrook/getting-started-gemma-4-developer-agent), '
+        'click Copy & Edit, then File -> Import Notebook with this .ipynb, and keep Settings -> Environment = '
+        '"Pin to original environment". Stopped before installing anything.')
+print('environment OK')
+"""
 
 # One spec per notebook, in run order. Drives the first cell of each notebook and notebooks/README.md.
 SPECS = {
@@ -72,6 +112,7 @@ def first_cell(key: str) -> dict:
              "Leave `/kaggle/working/private/` on Kaggle (competition-derived)."]
     if sp["accelerator"].startswith("GPU"):
         lines.append(f"- {L4_NOTE}")
+    lines += ["", f"**How to run it in the right environment.** {ENV_NOTE}", ""] + env_steps(sp)
     return md("\n".join(lines))
 
 
@@ -81,6 +122,17 @@ def readme() -> str:
             "(DECISIONS.md on `paper/main`): `<pilot letter><number>_<what>__<accelerator>.ipynb`, flat in `notebooks/`. "
             "Kaggle uses the file name as the title.", "",
             f"> **Note:** {L4_NOTE}", "",
+            f"> **Environment:** {ENV_NOTE} Every notebook's first code cell stops it within seconds on any other "
+            "Python version.", "",
+            "## How to run any of these notebooks (same steps for each; accelerator and inputs per the table)", "",
+            *[l.replace(f"`notebooks/{SPECS['C00']['file']}`", "the notebook's `.ipynb`").replace(f"`{SPECS['C00']['file'][:-6]}`", "the file name without `.ipynb`")
+              .replace("Accelerator = **None**", "Accelerator = as in the table").replace("No earlier notebook output is needed.", "Attach the earlier notebook's output listed in the table (Add input → Your Work → Notebooks).")
+              .replace("The Gemma 4 models that came with the copy are not needed (you can remove them).", "CPU notebooks don't need the Gemma 4 models that came with the copy (you can remove them).")
+              for l in env_steps(SPECS["C00"])], "",
+            "CPU notebooks (`C00`, `C03v`) install only the 5 wheelhouse wheels they need: `swegemma`, `adk_eval_core`, "
+            "`adk_submission`, `google_adk`, `google_genai` (all pure Python). GPU notebooks install the starter's full set "
+            "of 41.", "",
+            "## Run order", "",
             "Run in this order (each row lists everything to attach):", "",
             "| Order | Full path | Accelerator | Internet | Inputs to attach | Earlier output needed | Expected time | Output file to commit |",
             "|---|---|---|---|---|---|---|---|"]
@@ -91,11 +143,10 @@ def readme() -> str:
                     + "; ".join(sp["inputs"]) + f" | {up} | {sp['time']} | `results/{sp['output']}` |")
     tail = ["", "`notebooks/C01_smoke_timing__L4x4.ipynb` and `notebooks/C03_probe__L4x4.ipynb` both need only the output of "
             "`notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other.", "",
-            "How to run (UI): New Notebook → File → Import notebook → choose the `.ipynb` → Add inputs as listed (attach the "
-            "competition first, so the L4 x4 option appears) → Settings: accelerator and internet as listed → Save Version → "
-            "Save & Run All. When it finishes, download the output file named in the table and commit it to `results/`.", "",
-            "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off: "
-            "`tests/papermill_dryrun.sh <local_comp> <venv> <out> C00 C01 C03 C03v`.", "",
+            "When a notebook finishes, download the output file named in the table and commit it to `results/`.", "",
+            "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off, under Python 3.12 "
+            "and with the real wheel install from the full wheelhouse: "
+            "`tests/papermill_dryrun.sh <local_comp> <py3.12 venv> <out> C00 C01 C03 C03v` (WHEELHOUSE=<dir of the 41 wheels>).", "",
             "Data rule: everything under `/kaggle/working/private/` (task copies, gold locations, captured contexts, probe "
             "records, sampled edits, traces) is competition-derived. Leave it on Kaggle. Commit only the output files above "
             "(task IDs, numbers, flags).", ""]
@@ -112,7 +163,7 @@ def code(src: str) -> dict:
 
 
 def code_cells() -> list[dict]:
-    cells = [code("import os\nos.makedirs('/kaggle/working/pilot/common', exist_ok=True)\n"
+    cells = [code(ENV_CHECK), code("import os\nos.makedirs('/kaggle/working/pilot/common', exist_ok=True)\n"
                   "os.makedirs('/kaggle/working/pilot/pilot_c', exist_ok=True)")]
     for rel in CODE_FILES:
         p = ROOT / rel
@@ -132,7 +183,7 @@ sys.path.insert(0, '/kaggle/working/pilot')
 SESSION_T0 = time.time()
 from pilot_c import kaggle_runner as kr
 kr.set_env()
-kr.install_wheelhouse(gpu={gpu})
+kr.install_wheelhouse(gpu={gpu}, only={only})
 kr.quiet_logs()
 IDS = json.loads(Path('/kaggle/working/pilot/pilot_c/task_ids.json').read_text())
 print(kr.env_info())
@@ -219,7 +270,7 @@ PLAN = [
 def gold_check_nb() -> tuple[dict, str]:
     cells = [first_cell("C00")]
     cells += code_cells()
-    cells.append(code(SETUP.format(gpu="False")))
+    cells.append(code(SETUP.format(gpu="False", only="kr.CPU_WHEELS")))
     cells.append(code(C00_RUN))
     cells.append(md(RESULTS_NOTE.format(out=SPECS["C00"]["output"])))
     return _nb(cells), SPECS["C00"]["file"]
@@ -239,7 +290,7 @@ def smoke_nb() -> tuple[dict, str]:
     cells = [first_cell("C01")]
     cells += code_cells()
     cells.append(code(PRECHECK_00))
-    cells.append(code(SETUP.format(gpu="True")))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
     cells.append(code(C01_CONFIG))
     cells.append(code(GPU_LOOP.format(nbfile=SPECS["C01"]["file"], out=SPECS["C01"]["output"])))
     cells.append(md(RESULTS_NOTE.format(out=SPECS["C01"]["output"])))
@@ -330,7 +381,7 @@ def probe_nb() -> tuple[dict, str]:
     cells.append(code(PRECHECK_00.replace("import sys, json", "import os, sys, json").replace(
         "assert len(_gc['selection']['smoke3']) == 3, f\"notebooks/C00_gold_check__CPU.ipynb found fewer than 3 valid tasks: {_gc['selection']['smoke3']}\"",
         "assert _gc['summary']['valid'] >= int(os.environ.get('PILOT_MIN_VALID', 10)), f\"too few valid tasks: {_gc['summary']['valid']}\"")))
-    cells.append(code(SETUP.format(gpu="True")))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
     cells.append(code(PROBE_CONFIG))
     cells.append(code(PROBE_RUN))
     cells.append(md(RESULTS_NOTE.format(out=SPECS["C03"]["output"])))
@@ -340,7 +391,7 @@ def probe_nb() -> tuple[dict, str]:
 def probe_verify_nb() -> tuple[dict, str]:
     cells = [first_cell("C03v")]
     cells += code_cells()
-    cells.append(code(SETUP.format(gpu="False")))
+    cells.append(code(SETUP.format(gpu="False", only="kr.CPU_WHEELS")))
     cells.append(code(VERIFY_RUN))
     cells.append(md(RESULTS_NOTE.format(out=SPECS["C03v"]["output"])))
     return _nb(cells), SPECS["C03v"]["file"]

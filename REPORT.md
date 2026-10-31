@@ -354,3 +354,32 @@ first cell of each says what to attach and what to bring back; `notebooks/README
 
 The per-notebook `kernel-metadata.json` files were dropped with the subfolders, so the notebooks are run through the
 Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermill_dryrun.sh … C00 C01 C03 C03v`).
+
+## 12. Kaggle environment fix (2026-10-31)
+
+- **Cause of the failure of `notebooks/C00_gold_check__CPU.ipynb` after 11 s:** a new Kaggle notebook runs Python 3.13,
+  and pip rejects the wheelhouse's cp312 wheels (`cbor2-6.1.4-cp312-…`). The official starter runs on a pinned image
+  (`gcr.io/kaggle-private-byod/python@sha256:37c64f7d…`, from its kernel metadata) with Python 3.12, per its run log
+  (`/usr/local/lib/python3.12/dist-packages`, read through the Kaggle output API). Reproduced locally: 3.13 rejects
+  `cbor2` with the same message; 3.12 accepts all wheels.
+- **Fix:**
+  - Every notebook's first markdown cell and `notebooks/README.md` give the UI steps: Copy & Edit the starter, then
+    File → Import Notebook, keep Environment = "Pin to original environment".
+  - Every notebook's first code cell prints the Python version and raises at once unless it is 3.12.
+  - `install_wheelhouse` refuses, before calling pip, any wheel whose Python tag doesn't fit.
+- **CPU notebooks install 5 wheels.** `notebooks/C00_gold_check__CPU.ipynb` and
+  `notebooks/C03v_test_verify__CPU.ipynb` install only `swegemma`, `adk_eval_core`, `adk_submission`, `google_adk`
+  and `google_genai`. These are the only wheelhouse distributions among the 90 that the gold-check path imports
+  (measured under Python 3.12).
+- **Dry runs now match Kaggle.** They run under Python 3.12 with the real wheel install from the full 41-wheel
+  wheelhouse. A negative test runs C00 under 3.13 and expects the environment check to stop it after one cell.
+- **Dry-run results (2026-10-31):**
+  - NEG313: stopped by the environment check after 1 cell.
+  - C00 and C03v: Python 3.12.3, real install of 5 wheels.
+  - C01 and C03: Python 3.12.3, real install of all 41 wheels.
+  - All passed under papermill.
+- **Limit of the dry run:** the packages that the Kaggle image itself provides (litellm, pydantic, torch, …) come from
+  PyPI in the local venv, not from the image, so library-version differences inside the image are still not covered.
+- **Not verified:** that Kaggle's Copy & Edit + Import Notebook keeps the pin, and the menu labels. These come from
+  how Kaggle documents and shows these settings; I can't open the UI from here. The first code cell catches any
+  mistake within seconds.

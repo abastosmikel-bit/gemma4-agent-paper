@@ -81,8 +81,32 @@ def set_env() -> None:
     os.environ.setdefault("LOCAL_API_KEY", "EMPTY")
 
 
-def install_wheelhouse(gpu: bool = True) -> None:
-    """Starter-identical wheel install (cpu mode skips GPU-only wheels)."""
+EXPECTED_PYTHON = (3, 12)  # the official starter's pinned Kaggle environment; the wheelhouse is built for cp312
+# Wheelhouse wheels the CPU notebooks need (gold check, test verification). Found by running that code path and
+# recording every imported distribution: of 90, only these 5 come from the wheelhouse; all are pure Python
+# (py3-none-any). Everything else is provided by the Kaggle image. The other 36 wheels serve the model (vLLM stack).
+CPU_WHEELS = ("swegemma", "adk_eval_core", "adk_submission", "google_adk", "google_genai")
+
+
+def _dist_of(wheel_name: str) -> str:
+    return re.sub(r"[-_.]+", "_", wheel_name.split("-")[0]).lower()
+
+
+def _wheel_supported(wheel_name: str) -> bool:
+    """True if the wheel's python tag fits this interpreter (pure-python, abi3 or the exact cpXY)."""
+    parts = wheel_name[:-4].split("-")
+    py, abi = parts[-3], parts[-2]
+    here = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    if py.startswith("py") or "none" in abi and not py.startswith("cp"):
+        return True
+    if abi == "abi3":
+        return any(int(t[3:] or 0) <= sys.version_info.minor for t in py.split(".") if t.startswith("cp3"))
+    return here in py.split(".")
+
+
+def install_wheelhouse(gpu: bool = True, only: tuple[str, ...] | None = None) -> None:
+    """Starter-identical wheel install. gpu=False skips GPU-only wheels; `only` restricts to those distributions
+    (the CPU notebooks pass CPU_WHEELS). Refuses, before calling pip, any wheel built for another Python."""
     import importlib
     for pat in ("/usr/local/lib/python*/dist-packages/*cutlass*.pth", "/usr/local/lib/python*/site-packages/*cutlass*.pth"):
         for pth in glob.glob(pat):
@@ -91,9 +115,13 @@ def install_wheelhouse(gpu: bool = True) -> None:
             except OSError:
                 pass
     tmp = Path("/tmp/wheelhouse")
+    if tmp.exists():
+        shutil.rmtree(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
     for w in wheelhouse_dir().glob("*.whl"):
         if "cutlass" in w.name.lower() or (not gpu and w.name.startswith(GPU_ONLY_WHEELS)):
+            continue
+        if only is not None and _dist_of(w.name) not in only:
             continue
         name = w.name.replace("cu128", "+cu128") if ("cu128" in w.name and "+" not in w.name) else w.name
         t = tmp / name
@@ -103,7 +131,16 @@ def install_wheelhouse(gpu: bool = True) -> None:
             except OSError:
                 shutil.copyfile(w, t)
     wheels = sorted(str(w) for w in tmp.glob("*.whl"))
-    print(f"installing {len(wheels)} wheels")
+    if only is not None:
+        missing = sorted(set(only) - {_dist_of(Path(w).name) for w in wheels})
+        if missing:
+            raise RuntimeError(f"wheelhouse is missing {missing}; is the dataset metric/gemma-4-developer-agent-wheelhouse attached?")
+    bad = [Path(w).name for w in wheels if not _wheel_supported(Path(w).name)]
+    if bad:
+        raise RuntimeError(f"Python {sys.version.split()[0]} cannot install {bad[:3]}... (wheelhouse is built for "
+                           f"cp{EXPECTED_PYTHON[0]}{EXPECTED_PYTHON[1]}). Run this notebook in the official starter's "
+                           "pinned environment: see the first cell of the notebook.")
+    print(f"installing {len(wheels)} wheels: {', '.join(_dist_of(Path(w).name) for w in wheels)}")
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--no-deps", "--force-reinstall", *wheels], check=True)
     importlib.invalidate_caches()
 

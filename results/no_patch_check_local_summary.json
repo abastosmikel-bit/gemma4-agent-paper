@@ -1,0 +1,28 @@
+{
+ "environment": "local subprocess sandbox, python 3.13 (NOT Kaggle, NOT the scorer image)",
+ "gold_passing_checked": 72,
+ "pass_without_patch": 5,
+ "pass_without_patch_ids": [
+  "fastapi_14077",
+  "fastapi_14851",
+  "requests_7309",
+  "requests_7315",
+  "requests_7427"
+ ],
+ "by_repo": {
+  "Textualize/rich": {
+   "gold_pass": 38,
+   "pass_without_patch": 0
+  },
+  "fastapi/fastapi": {
+   "gold_pass": 31,
+   "pass_without_patch": 2
+  },
+  "psf/requests": {
+   "gold_pass": 3,
+   "pass_without_patch": 3
+  }
+ },
+ "valid_gold_passes_and_no_patch_fails": 67,
+ "unknown_baseline": 0
+}

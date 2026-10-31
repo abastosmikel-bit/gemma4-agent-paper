@@ -55,6 +55,7 @@ GPU_LOOP = """
 summary = {{"pilot": "C", "notebook": "{name}", "env": kr.env_info(), "budget": BUDGET, "task_ids": TASKS,
            "plan": PLAN, "concurrency": CONCURRENCY, "servers": [], "runs": [], "skipped": []}}
 out = Path('/kaggle/working/pilot_c_{name}.json')
+assert TASKS, 'no tasks selected - stopping before any GPU work'
 gold = kr.build_gold(TASKS)
 for model, conds in PLAN:
     if (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
@@ -163,7 +164,15 @@ Accelerator: **GPU L4 x4**. Inputs: competition, wheelhouse dataset, Gemma 4 e4b
     cells.append(code(SETUP.format(gpu="True")))
     cells.append(code("""
 # ---- configuration (only edit here)
-TASKS = IDS['pilot15']
+# Task set: pre-registered candidate order per repo; keep those whose GOLD patch resolves here (~4 min CPU),
+# then take the first `quota` per repo (fastapi 7, rich 6, requests 2).
+cands, quota = IDS['candidates_in_order'], IDS['quota']
+gcheck = kr.gold_check([i for v in cands.values() for i in v], Path('/kaggle/working/pilot_c_pilot_goldcheck.json'))
+ok = {r['instance_id'] for r in gcheck['rows'] if r['gold_resolved']}
+TASKS = [i for repo, k in quota.items() for i in [x for x in cands[repo] if x in ok][:k]]
+print(len(TASKS), 'pilot tasks:', TASKS)
+if len(TASKS) < 15:
+    print('WARNING: fewer than 15 gold-solvable candidates; the pilot runs on', len(TASKS), 'tasks')
 BUDGET = dict(timeout_seconds=120, max_tool_calls=50, max_time_minutes=15)
 CONCURRENCY = 5
 MAX_SESSION_HOURS = 3.9                        # hard ceiling agreed for the pilot is 4 L4x4 hours

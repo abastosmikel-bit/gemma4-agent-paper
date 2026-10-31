@@ -7,7 +7,7 @@ Rule (fixed before any agent run):
              repo in {fastapi, rich, requests},
              and the GOLD patch resolves the task in the sandbox (gold check JSON, if given)
   pilot15  = stratified random sample: fastapi 7, rich 6, requests 2 (seeded)
-  reserve  = next 2 per repo from the same shuffled order (replace tasks whose gold
+  reserve  = next 4 per repo from the same shuffled order (replace tasks whose gold
              patch fails the CPU gold check)
   smoke3   = first pilot task of each repo (used for the smoke test and size timing)
 
@@ -19,7 +19,7 @@ import sys
 
 SEED = 20261031
 QUOTA = {"fastapi/fastapi": 7, "Textualize/rich": 6, "psf/requests": 2}
-RESERVE = 2
+RESERVE = 4
 
 
 def eligible(g):

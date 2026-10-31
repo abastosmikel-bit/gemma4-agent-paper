@@ -1,6 +1,6 @@
 # Pilot C — Where does a small agent break? (interim report)
 
-Status: **CPU stage done; GPU runs prepared and waiting for your OK.** GPU hours used so far: **0**.
+Status: **CPU stage done. You approved notebook 01 (smoke + timing, hard stop 1.75 L4x4 h), a 50-call / 15-min budget, and small single-file tasks.** GPU hours used so far: **0**.
 Branch: `pilot/c-bottleneck` (orphan, as requested; the environment allowed this branch name).
 
 ## 1. What I did
@@ -55,10 +55,13 @@ Gold-location statistics, 129 dev tasks (`results/gold_stats_dev129.json`):
 | Some change outside any def/class (imports, constants, new top-level defs) | 54 |
 | All verification test files are new (agent cannot run them before the fix) | 32 |
 | Median gold patch size | 12 changed lines (IQR 4–44.5) |
-| Pilot-eligible (1 existing file, 1–2 functions, ≤40 lines, ≥1 test name) | 70 |
+| Pilot-eligible (1 existing file, 1–2 functions, ≤40 lines, ≥1 test name) | 70 (43 also gold-pass locally) |
 
-Gold-patch check in a **local** sandbox (not yet on Kaggle): 13 of the first 21 tasks checked pass
-(plus 14 of 25 candidate tasks checked earlier). Causes in the failures I inspected:
+Gold-patch check in a **local** sandbox (python 3.13; not yet Kaggle, not the scorer's Docker image;
+`results/gold_check_local_summary.json`): the gold patch resolves only **73 / 129** tasks: rich 39/48,
+fastapi 31/67, requests 3/13, httpx 0/1. Of the 70 pilot-eligible tasks, 43 pass. Forum runs solved roughly 81 tasks
+at least once, so Kaggle's environment is probably more permissive than mine; notebook 00 gives the real number.
+Causes in the failures I inspected:
 - `requests`: the test file needs the `pytest-httpbin` plugin, absent from the wheels and from the
   official Dockerfiles;
 - `fastapi_14360`: imports `dirty_equals`, which is not in the wheels;

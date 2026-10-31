@@ -1,0 +1,26 @@
+{
+ "environment": "local subprocess sandbox, python 3.13 (NOT Kaggle, NOT the scorer docker image)",
+ "n_checked": 129,
+ "gold_resolved": 73,
+ "by_repo": {
+  "Textualize/rich": {
+   "checked": 48,
+   "gold_resolved": 39
+  },
+  "fastapi/fastapi": {
+   "checked": 67,
+   "gold_resolved": 31
+  },
+  "psf/requests": {
+   "checked": 13,
+   "gold_resolved": 3
+  },
+  "encode/httpx": {
+   "checked": 1,
+   "gold_resolved": 0
+  }
+ },
+ "eligible_checked": 70,
+ "eligible_gold_resolved": 43,
+ "median_verify_s": 6.7
+}

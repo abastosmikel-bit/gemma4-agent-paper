@@ -1,0 +1,27 @@
+# Competition data must never be committed (tasks, snapshots, patches, traces, graphs, embeddings).
+*.jsonl
+*.tgz
+*.tar.gz
+*.npz
+*.patch
+*.parquet
+*.safetensors
+*.whl
+data/
+kdata/
+snapshots/
+graphs/
+embeddings/
+wheels/
+traces/
+patches/
+test_outputs/
+logs/
+runs/
+private/
+# raw per-task outputs from Kaggle; only aggregate JSONs in results/ are committed
+results/raw/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/

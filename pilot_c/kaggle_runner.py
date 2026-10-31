@@ -8,7 +8,7 @@ oracle hints, results dir, concurrency.
 
 Outputs:
   /kaggle/working/private/...         raw runs (patches, traces) - NEVER commit
-  /kaggle/working/pilot_c_<tag>.json  numbers only - commit to results/
+  /kaggle/working/C0x_<what>.json      numbers only - commit to results/ (names: notebooks/README.md)
 """
 from __future__ import annotations
 
@@ -529,9 +529,13 @@ def select_from_gold_check(gold_all: dict[str, dict], check_rows: list[dict[str,
 
 
 def find_input_json(name: str) -> Path:
-    """Locate an attached notebook output (e.g. notebook 00's JSON) under /kaggle/input."""
+    """Locate an attached notebook output (e.g. C00_gold_check.json from notebooks/C00_gold_check__CPU.ipynb)
+    anywhere under /kaggle/input, independent of the slug Kaggle gives the attached notebook."""
     root = os.environ.get("PILOT_INPUT_ROOT", "/kaggle/input")
     hits = sorted(glob.glob(f"{root}/**/{name}", recursive=True))
     if not hits:
-        raise FileNotFoundError(f"{name} not found under {root}: attach notebook 00's output as an input first")
+        producer = {"C00_gold_check.json": "notebooks/C00_gold_check__CPU.ipynb",
+                    "probe_records.jsonl": "notebooks/C03_probe__L4x4.ipynb"}.get(name, "the notebook that writes it")
+        raise FileNotFoundError(f"{name} not found under {root}: attach the output of {producer} as an input first "
+                                "(see notebooks/README.md)")
     return Path(hits[0])

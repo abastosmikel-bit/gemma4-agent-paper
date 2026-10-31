@@ -1,6 +1,6 @@
 # Pilot C — Where does a small agent break? (interim report)
 
-Status: **CPU stage done. Notebook 01 is on hold pending this rethink (§8); notebook 00 (CPU) can run.** GPU hours used so far: **0**.
+Status: **CPU stage done; notebooks ready and dry-run (§10, §11).** GPU hours used so far: **0**. Notebooks are named by full path (`notebooks/C00_gold_check__CPU.ipynb`, `notebooks/C01_smoke_timing__L4x4.ipynb`, `notebooks/C03_probe__L4x4.ipynb`, `notebooks/C03v_test_verify__CPU.ipynb`); run order and inputs: `notebooks/README.md`.
 Branch: `pilot/c-bottleneck` (orphan, as requested; the environment allowed this branch name).
 
 ## 1. What I did
@@ -60,7 +60,7 @@ Gold-location statistics, 129 dev tasks (`results/gold_stats_dev129.json`):
 Gold-patch check in a **local** sandbox (python 3.13; not yet Kaggle, not the scorer's Docker image;
 `results/gold_check_local_summary.json`): the gold patch resolves only **73 / 129** tasks: rich 39/48,
 fastapi 31/67, requests 3/13, httpx 0/1. Of the 70 pilot-eligible tasks, 43 pass. Forum runs solved roughly 81 tasks
-at least once, so Kaggle's environment is probably more permissive than mine; notebook 00 gives the real number.
+at least once, so Kaggle's environment is probably more permissive than mine; `notebooks/C00_gold_check__CPU.ipynb` gives the real number.
 Causes in the failures I inspected:
 - `requests`: the test file needs the `pytest-httpbin` plugin, absent from the wheels and from the
   official Dockerfiles;
@@ -73,7 +73,7 @@ Causes in the failures I inspected:
   sandbox venv inherits the host's site-packages (`system_site_packages=True`), so solvability
   depends on the host image. Local, the Kaggle notebook, and the real scorer (Docker,
   python:3.13-slim) can each differ. Consequence: every solve-rate number must be read against
-  the gold-solvable subset measured **on Kaggle**. Notebook 00 measures this, using no GPU.
+  the gold-solvable subset measured **on Kaggle**. `notebooks/C00_gold_check__CPU.ipynb` measures this, using no GPU.
 - **O-test is weaker than it sounds.** In 32/129 tasks the required tests live in new files the
   agent can't run, and test names can leak interface information. Forum thread 748482 reports 12
   of 43 failures due to hidden tests needing names absent from the issue. Both effects need
@@ -118,13 +118,13 @@ one family, and intervention rather than observation.
 
 ## 6. Plan, cost, and provisional go/no-go
 
-> Superseded in part by §8.6: run 01 with 40 calls; replace 02 by the D1 probe + a 12b validation slice.
+> Superseded in part by §8.6: run `notebooks/C01_smoke_timing__L4x4.ipynb` with 40 calls; replace the e4b rollout pilot notebook (removed; was `pilot_c_pilot_e4b`) by the D1 probe (`notebooks/C03_probe__L4x4.ipynb`) + a 12b validation slice.
 
 | Step | Accelerator | Estimate (L4x4 h) | Hard stop | Status |
 |---|---|---|---|---|
-| 00 gold check, all 129 tasks | CPU | 0 | — | ready |
-| 01 smoke + timing: 3 tasks × 4 sizes at O0, + e4b O-all | L4x4 | ≈1.3 (range 1.0–1.75) | 1.75 | **needs your OK** |
-| 02 pilot: e4b × 15 tasks × {O0, O-func, O-all, O0 rerun} | L4x4 | ≈1.2–3 (re-estimated after 01) | 3.9 | after 01 |
+| `notebooks/C00_gold_check__CPU.ipynb`: gold check, all 129 tasks | CPU | 0 | — | ready |
+| `notebooks/C01_smoke_timing__L4x4.ipynb`: 3 tasks × 4 sizes at O0, + e4b O-all | L4x4 | ≈1.3 (range 1.0–1.75) | 1.75 | **needs your OK** |
+| the e4b rollout pilot notebook (removed; was `pilot_c_pilot_e4b`): e4b × 15 tasks × {O0, O-func, O-all, O0 rerun} | L4x4 | ≈1.2–3 | 3.9 | dropped |
 
 How the 01 estimate is built (estimated, not measured):
 - install + checks: ~0.1 h;
@@ -254,7 +254,7 @@ How the D1 cost is built:
 - 4 server start-ups ≈ 25 min;
 - 31B ≈ 1 h; 12b ≈ 0.5 h; e2b/e4b ≈ 10–15 min each.
 
-These are guesses until notebook 01 has measured real throughput.
+These are guesses until `notebooks/C01_smoke_timing__L4x4.ipynb` has measured real throughput.
 
 ### 8.6 Recommendation
 
@@ -270,15 +270,15 @@ These are guesses until notebook 01 has measured real throughput.
    - If small models can use WHERE but don't find it: build a localization skill or sub-agent.
      That is a legal channel, and pilot A's.
    - If they can't use even HOW-exact: fix edit expression (pilot B).
-3. **Notebook 01: run it, but with the budget changed to 40 calls / 15 min (§8.7). Otherwise as
+3. **`notebooks/C01_smoke_timing__L4x4.ipynb`: run it, but with the budget changed to 40 calls / 15 min (§8.7). Otherwise as
    built.** It still earns its ≈1.3 h because every direction needs:
    - all four servers proven on Kaggle, including 12B's override;
    - real per-size traces to rebuild the probe contexts exactly;
    - per-size minutes per task to price the validation rollouts.
 
    The e4b O-all arm is a cheap first look at whether hints change behaviour.
-4. **Do not run notebook 02 as built.** 15-task e4b rollouts are the design most likely to floor.
-5. **Run notebook 00 regardless.** The gold ceiling matters for every direction.
+4. **Do not run the e4b rollout pilot notebook (removed; was `pilot_c_pilot_e4b`).** 15-task e4b rollouts are the design most likely to floor.
+5. **Run `notebooks/C00_gold_check__CPU.ipynb` regardless.** The gold ceiling matters for every direction.
 
 ### 8.7 Budget: switch from 50 to 40 calls?
 
@@ -318,11 +318,11 @@ so the pilots' `malformed_share` numbers are **not comparable** until merged.
 ## 10. Phase 3 status (2026-10-31; no GPU used)
 
 - **Notebooks fixed and dry-run with papermill** (`tests/papermill_dryrun.sh`), in their real dependency order:
-  00 → 01, and 00 → 03 probe → 03v. The cause of the Kaggle failure was empty `%%writefile` cells; the builder now asserts
+  `notebooks/C00_gold_check__CPU.ipynb` → `notebooks/C01_smoke_timing__L4x4.ipynb`, and `notebooks/C00_gold_check__CPU.ipynb` → `notebooks/C03_probe__L4x4.ipynb` → `notebooks/C03v_test_verify__CPU.ipynb`. The cause of the Kaggle failure was empty `%%writefile` cells; the builder now asserts
   that no cell is empty.
-- **00** also runs the no-patch baseline: valid = gold passes AND no-patch fails. It classifies failures (missing module /
+- `notebooks/C00_gold_check__CPU.ipynb` also runs the no-patch baseline: valid = gold passes AND no-patch fails. It classifies failures (missing module /
   fixture / test failure / …), counts fastapi tasks failing on `inline_snapshot` / `dirty_equals` (the forum claim), and
-  writes the pre-registered task order. **01** reads its 3 tasks from 00's output, uses 40 calls / 15 min, and logs
+  writes the pre-registered task order. `notebooks/C01_smoke_timing__L4x4.ipynb` reads its 3 tasks from `notebooks/C00_gold_check__CPU.ipynb`'s output, uses 40 calls / 15 min, and logs
   compaction through runtime probes.
 - **Findings from the checks** (details and sources in `LEARNINGS.md` on `paper/main`):
   - The local Evaluator counts empty patches; the scorer does not. `resolved` now requires a non-empty patch.
@@ -338,3 +338,19 @@ so the pilots' `malformed_share` numbers are **not comparable** until merged.
   - The vLLM 0.19.1 API fields the probe uses were checked in its source.
 - **Shared branch `paper/main`:** `LEARNINGS.md`, `DECISIONS.md` (plan hash recorded), `RESULTS.md`,
   `docs/PROBE_INPUT.md` (v2).
+
+## 11. Notebook names (2026-10-31)
+
+Every notebook is named by the rule `<pilot letter><number>_<what>__<accelerator>.ipynb`, flat in `notebooks/`. The
+first cell of each says what to attach and what to bring back; `notebooks/README.md` lists them in run order.
+
+| Full path | Was | Output to commit |
+|---|---|---|
+| `notebooks/C00_gold_check__CPU.ipynb` | `notebooks/pilot_c_gold_check_cpu/gold_check_cpu.ipynb` | `results/C00_gold_check.json` (was `pilot_c_gold_check_kaggle.json`) |
+| `notebooks/C01_smoke_timing__L4x4.ipynb` | `notebooks/pilot_c_smoke_timing/smoke_timing.ipynb` | `results/C01_smoke_timing.json` (was `pilot_c_smoke_timing.json`) |
+| `notebooks/C03_probe__L4x4.ipynb` | `notebooks/pilot_c_probe/probe.ipynb` | `results/C03_probe.json` (was `pilot_c_probe.json`) |
+| `notebooks/C03v_test_verify__CPU.ipynb` | `notebooks/pilot_c_probe_verify_cpu/probe_verify_cpu.ipynb` | `results/C03v_test_verify.json` (was `pilot_c_probe_verify.json`) |
+| (removed) | `notebooks/pilot_c_pilot_e4b/pilot_e4b.ipynb` | superseded by `notebooks/C03_probe__L4x4.ipynb`; the 12b validation will get its own C-number |
+
+The per-notebook `kernel-metadata.json` files were dropped with the subfolders, so the notebooks are run through the
+Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermill_dryrun.sh … C00 C01 C03 C03v`).

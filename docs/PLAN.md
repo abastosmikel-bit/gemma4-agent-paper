@@ -253,3 +253,9 @@ data had been seen.
    tokens; it is reported, not imputed.
 5. **Session safety.** If the API self-check fails on the first size, the session stops instead of
    starting the other servers.
+6. **Notebook names (2026-10-31, no design change).** References in this frozen plan map to full paths:
+   "notebook 00" = `notebooks/C00_gold_check__CPU.ipynb` (output `C00_gold_check.json`);
+   "notebook 01" = `notebooks/C01_smoke_timing__L4x4.ipynb`;
+   the probe = `notebooks/C03_probe__L4x4.ipynb` (output `C03_probe.json`);
+   its CPU test verification = `notebooks/C03v_test_verify__CPU.ipynb`.
+   "notebook 02" in §8 means the 12b validation notebook, which is not built yet and will get its own C-number.

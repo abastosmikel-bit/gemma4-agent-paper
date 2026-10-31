@@ -1,9 +1,10 @@
 """Generate the Pilot C Kaggle notebooks with the repo code inlined (%%writefile cells).
 
 usage: python notebooks/build_notebooks.py
-Writes notebooks/pilot_c_<name>/{<name>.ipynb, kernel-metadata.json}.
-Each notebook is self-contained: upload it to Kaggle (or `kaggle kernels push -p <dir>`),
-attach the inputs listed in its metadata, pick the accelerator named below, run all.
+Writes notebooks/<file> for every entry of SPECS, and notebooks/README.md (run-order table).
+Naming rule (DECISIONS.md, paper/main): <pilot letter><number>_<what>__<accelerator>.ipynb, flat in notebooks/.
+Kaggle uses the file name as the notebook title, so the name carries what it is and where it runs.
+The first cell of each notebook says what it does, accelerator, internet, inputs to attach, run time, output.
 """
 from __future__ import annotations
 
@@ -14,9 +15,91 @@ ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ["common/__init__.py", "common/diffs.py", "common/locate.py", "common/tasks.py", "common/trace.py",
               "common/metrics.py", "common/runtime_probes.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json",
               "pilot_c/probe.py", "pilot_c/capture_server.py", "pilot_c/probe_runner.py"]
-DOCKER_IMAGE = "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461"
-MODELS = ["google/gemma-4/Other/gemma-4-e4b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-e2b-it-qat-w4a16-ct/2",
-          "google/gemma-4/Other/gemma-4-31b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-12b-it-qat-w4a16-ct/2"]
+
+
+COMPETITION = "competition `gemma-4-developer-agent`"
+WHEELHOUSE = "dataset `metric/gemma-4-developer-agent-wheelhouse`"
+GEMMA = ("models `google/gemma-4` → Other → `gemma-4-e2b-it-qat-w4a16-ct`, `gemma-4-e4b-it-qat-w4a16-ct`, "
+         "`gemma-4-12b-it-qat-w4a16-ct`, `gemma-4-31b-it-qat-w4a16-ct` (version 2)")
+L4_NOTE = "The **GPU L4 x4** option only appears after the competition `gemma-4-developer-agent` is attached as an input."
+
+# One spec per notebook, in run order. Drives the first cell of each notebook and notebooks/README.md.
+SPECS = {
+    "C00": {"file": "C00_gold_check__CPU.ipynb", "accelerator": "None (CPU)", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE], "upstream": None, "upstream_file": None,
+            "time": "≈ 60–90 min CPU (129 tasks, each verified with the gold patch and with no patch); 0 GPU h",
+            "output": "C00_gold_check.json",
+            "what": "Applies every task's gold patch AND no patch in the scorer's verification path. A task is valid "
+                    "only if gold passes and no-patch fails. Records why gold fails (missing module / fixture / test "
+                    "failure), counts fastapi tasks failing on `inline_snapshot`/`dirty_equals`, and writes the "
+                    "pre-registered task order and smoke set used by C01 and C03."},
+    "C01": {"file": "C01_smoke_timing__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE, GEMMA], "upstream": "C00", "upstream_file": "C00_gold_check.json",
+            "time": "≈ 1.3 L4x4 h (range 1.0–1.75; hard stop 1.75 h)",
+            "output": "C01_smoke_timing.json",
+            "what": "Official sample agent (adapters removed, 40 calls / 15 min) on the same 3 valid tasks for e4b, e2b, "
+                    "12b, 31b at no hints, plus e4b with all hints. Measures vLLM start-up and minutes per task per "
+                    "size, and logs context compaction (how often, when, what it drops, whether the trace shows it)."},
+    "C03": {"file": "C03_probe__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE, GEMMA], "upstream": "C00", "upstream_file": "C00_gold_check.json",
+            "time": "≈ 2.2 L4x4 h (range 1.6–3.0; hard stop 2.9 h)",
+            "output": "C03_probe.json",
+            "what": "Information-ladder probe (pre-registered: docs/PLAN.md, frozen at 168d115). Captures the agent's "
+                    "exact contexts with the real harness loop, then for 31b, e4b, 12b, e2b scores the log-likelihood "
+                    "of the correct action under each rung and samples one next action."},
+    "C03v": {"file": "C03v_test_verify__CPU.ipynb", "accelerator": "None (CPU)", "internet": "Off",
+             "inputs": [COMPETITION, WHEELHOUSE], "upstream": "C03",
+             "upstream_file": "private/probe_records.jsonl + private/probe_samples_*.jsonl",
+             "time": "≈ 2–4 h CPU (each distinct sampled edit is verified once); 0 GPU h",
+             "output": "C03v_test_verify.json",
+             "what": "Applies each edit sampled by C03 alone to the base snapshot and runs the required tests with the "
+                     "scorer's verification path."},
+}
+
+
+def first_cell(key: str) -> dict:
+    sp = SPECS[key]
+    up = (f"**the output of `notebooks/{SPECS[sp['upstream']]['file']}`** (Add input → Your Work → Notebooks → "
+          f"`{SPECS[sp['upstream']]['file'][:-6]}`; it provides `{sp['upstream_file']}`). Run that notebook first."
+          if sp["upstream"] else "none (this notebook runs first).")
+    lines = [f"# {sp['file'][:-6]} — Pilot C", "", sp["what"], "",
+             f"- **Accelerator:** {sp['accelerator']}",
+             f"- **Internet:** {sp['internet']}",
+             "- **Inputs to attach:** " + "; ".join(sp["inputs"]),
+             f"- **Earlier output needed:** {up}",
+             f"- **Expected run time:** {sp['time']}",
+             f"- **Bring back:** `/kaggle/working/{sp['output']}` → commit to `results/` on branch `pilot/c-bottleneck`. "
+             "Leave `/kaggle/working/private/` on Kaggle (competition-derived)."]
+    if sp["accelerator"].startswith("GPU"):
+        lines.append(f"- {L4_NOTE}")
+    return md("\n".join(lines))
+
+
+def readme() -> str:
+    head = ["# Pilot C notebooks (run on Kaggle)", "",
+            "Generated by `notebooks/build_notebooks.py`; do not edit the `.ipynb` files by hand. Naming rule "
+            "(DECISIONS.md on `paper/main`): `<pilot letter><number>_<what>__<accelerator>.ipynb`, flat in `notebooks/`. "
+            "Kaggle uses the file name as the title.", "",
+            f"> **Note:** {L4_NOTE}", "",
+            "Run in this order (each row lists everything to attach):", "",
+            "| Order | Full path | Accelerator | Internet | Inputs to attach | Earlier output needed | Expected time | Output file to commit |",
+            "|---|---|---|---|---|---|---|---|"]
+    rows = []
+    for i, (k, sp) in enumerate(SPECS.items(), 1):
+        up = f"`notebooks/{SPECS[sp['upstream']]['file']}` → `{sp['upstream_file']}`" if sp["upstream"] else "—"
+        rows.append(f"| {i} | `notebooks/{sp['file']}` | {sp['accelerator']} | {sp['internet']} | "
+                    + "; ".join(sp["inputs"]) + f" | {up} | {sp['time']} | `results/{sp['output']}` |")
+    tail = ["", "`notebooks/C01_smoke_timing__L4x4.ipynb` and `notebooks/C03_probe__L4x4.ipynb` both need only the output of "
+            "`notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other.", "",
+            "How to run (UI): New Notebook → File → Import notebook → choose the `.ipynb` → Add inputs as listed (attach the "
+            "competition first, so the L4 x4 option appears) → Settings: accelerator and internet as listed → Save Version → "
+            "Save & Run All. When it finishes, download the output file named in the table and commit it to `results/`.", "",
+            "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off: "
+            "`tests/papermill_dryrun.sh <local_comp> <venv> <out> C00 C01 C03 C03v`.", "",
+            "Data rule: everything under `/kaggle/working/private/` (task copies, gold locations, captured contexts, probe "
+            "records, sampled edits, traces) is competition-derived. Leave it on Kaggle. Commit only the output files above "
+            "(task IDs, numbers, flags).", ""]
+    return "\n".join(head + rows + tail)
 
 
 def md(src: str) -> dict:
@@ -57,9 +140,9 @@ print(kr.env_info())
 
 GPU_LOOP = """
 # ---- the experiment loop: one vLLM server per model, conditions run as separate Evaluator batches
-summary = {{"pilot": "C", "notebook": "{name}", "env": kr.env_info(), "budget": BUDGET, "task_ids": TASKS,
+summary = {{"pilot": "C", "notebook": "notebooks/{nbfile}", "env": kr.env_info(), "budget": BUDGET, "task_ids": TASKS,
            "plan": PLAN, "concurrency": CONCURRENCY, "servers": [], "runs": [], "skipped": []}}
-out = Path('/kaggle/working/pilot_c_{name}.json')
+out = Path('/kaggle/working/{out}')
 assert TASKS, 'no tasks selected - stopping before any GPU work'
 gold = kr.build_gold(TASKS)
 for model, conds in PLAN:
@@ -85,29 +168,13 @@ print('L4x4 hours used by this session (wall clock):', summary["session_elapsed_
 """
 
 RESULTS_NOTE = """
-**When it finishes:** download `/kaggle/working/pilot_c_{name}.json` (numbers only: per-task flags/counts, no patches or traces)
+**When it finishes:** download `/kaggle/working/{out}` (numbers only: per-task flags/counts, no patches or traces)
 and commit it to `results/` on branch `pilot/c-bottleneck`. Everything under `/kaggle/working/private/` (hinted task copies,
 patches, traces) is competition-derived: keep it on Kaggle, never commit it.
 """
 
 
-def gold_check_nb() -> dict:
-    name = "gold_check_cpu"
-    cells = [md(f"""
-# Pilot C — 00: gold-patch check (CPU only, no GPU quota)
-Applies each task's **gold** patch in the scorer's Phase-2 verification path (swegemma `verify_task`, subprocess sandbox)
-and records whether it resolves. Tasks that fail here are unsolvable in this environment for any agent and are excluded
-from the pilot. Also verifies the gold-location extraction runs on Kaggle.
-
-Accelerator: **None (CPU)**. Inputs: competition `gemma-4-developer-agent`, dataset `metric/gemma-4-developer-agent-wheelhouse`.
-Expected time: ~40-90 min for all 129 tasks (written incrementally; eligible tasks run first).
-Also records WHY a gold patch fails (missing module / missing fixture / test failure ...), e.g. to check the forum
-report that 27 fastapi tasks fail on missing `inline_snapshot` / `dirty_equals`, and picks notebook 01's smoke tasks.
-**Notebook 01 needs this notebook's output attached as an input** (it reads `pilot_c_gold_check_kaggle.json`).
-""")]
-    cells += code_cells()
-    cells.append(code(SETUP.format(gpu="False")))
-    cells.append(code("""
+C00_RUN = """
 from common.tasks import load_tasks
 from pilot_c.select_tasks import eligible
 all_ids = [t['instance_id'] for t in load_tasks(kr.data_dir() / 'tasks.jsonl')]
@@ -119,54 +186,24 @@ gold_all = kr.build_gold(all_ids)              # derived data: stays in memory /
 first = [i for i in all_ids if eligible(gold_all[i])]
 order = first + [i for i in all_ids if i not in first]
 print(len(first), 'eligible tasks first, then the rest')
-OUT = Path('/kaggle/working/pilot_c_gold_check_kaggle.json')
+OUT = Path('/kaggle/working/C00_gold_check.json')
 res = kr.gold_check(order, OUT)
 print('gold resolves:', sum(r['gold_resolved'] for r in res['rows']), '/', len(res['rows']),
       '| valid (gold passes AND no-patch fails):', sum(bool(r.get('valid')) for r in res['rows']))
 print(json.dumps(res['summary'], indent=1))
-# pre-registered selection for notebook 01 (smoke3) and later runs, from THIS environment's gold check
+# pre-registered selection for C01 (smoke3) and C03 (task order), from THIS environment's gold check
 final = json.loads(OUT.read_text())
 final['selection'] = kr.select_from_gold_check(gold_all, res['rows'])
 OUT.write_text(json.dumps(final, indent=1))
-print('smoke3 for notebook 01:', final['selection']['smoke3'])
-"""))
-    cells.append(md(RESULTS_NOTE.format(name="gold_check_kaggle")))
-    return _nb(cells), _meta(name, gpu=False)
-
-
-PRECHECK_00 = """
-import sys, json
-sys.path.insert(0, '/kaggle/working/pilot')
-from pilot_c import kaggle_runner as kr
-_gc = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # fails fast if not attached
-assert len(_gc['selection']['smoke3']) == 3, f"notebook 00 found fewer than 3 valid tasks: {_gc['selection']['smoke3']}"
-print('notebook 00 output OK; smoke tasks:', _gc['selection']['smoke3'], '| valid tasks:', _gc['summary']['valid'])
+print('smoke3 for notebooks/C01_smoke_timing__L4x4.ipynb:', final['selection']['smoke3'])
 """
 
-
-def smoke_nb() -> dict:
-    name = "smoke_timing"
-    cells = [md("""
-# Pilot C — 01: smoke test + per-size timing (GPU, L4 x4)
-Runs the unchanged official sample agent (adapters removed, model swapped) on the **same 3 tasks** at O0 for every size,
-plus e4b at O-all to exercise the hint path with a real model. Purpose: (1) prove the pipeline works on Kaggle,
-(2) measure vLLM startup and minutes per task for each size, (3) log context compaction (how often, when, what it drops,
-whether it shows up in the trace) via runtime probes on the ADK summarizer and LLM client.
-Budget: 40 tool calls / 15 min per task (same as pilot A).
-
-Accelerator: **GPU L4 x4** (2x quota). Inputs: competition, wheelhouse dataset, all four Gemma 4 QAT models,
-and **the output of notebook 00** (Add input → Notebook output → pilot-c-gold-check-cpu). Run 00 first.
-Time guard: stops launching new work after `MAX_SESSION_HOURS`.
-""")]
-    cells += code_cells()
-    cells.append(code(PRECHECK_00))
-    cells.append(code(SETUP.format(gpu="True")))
-    cells.append(code("""
+C01_CONFIG = """
 # ---- configuration (only edit here)
-GOLD_CHECK = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # notebook 00 output
-TASKS = GOLD_CHECK['selection']['smoke3']      # same 3 gold-solvable tasks for every size
-assert len(TASKS) == 3, f'expected 3 smoke tasks from notebook 00, got {TASKS}'
-print('smoke tasks (from notebook 00):', TASKS)
+GOLD_CHECK = json.loads(kr.find_input_json('C00_gold_check.json').read_text())   # output of notebooks/C00_gold_check__CPU.ipynb
+TASKS = GOLD_CHECK['selection']['smoke3']      # same 3 valid tasks for every size
+assert len(TASKS) == 3, f'expected 3 smoke tasks from C00, got {TASKS}'
+print('smoke tasks (from notebooks/C00_gold_check__CPU.ipynb):', TASKS)
 BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # same as pilot A
 CONCURRENCY = 3
 MAX_SESSION_HOURS = 1.75
@@ -176,50 +213,43 @@ PLAN = [
     ('gemma-4-12b-it-qat-w4a16-ct', [('O0', 1)]),
     ('gemma-4-31b-it-qat-w4a16-ct', [('O0', 1)]),
 ]
-"""))
-    cells.append(code(GPU_LOOP.format(name=name)))
-    cells.append(md(RESULTS_NOTE.format(name=name)))
-    return _nb(cells), _meta(name, gpu=True)
+"""
 
 
-def pilot_nb() -> dict:
-    name = "pilot_e4b"
-    cells = [md("""
-# Pilot C — 02: oracle ablation pilot (GPU, L4 x4)
-e4b on the 15 pilot tasks: O0, O-func, O-all, then O0 again (noise estimate). Optional e2b block (set RUN_E2B).
-Hints are appended to the problem statement in a local task copy only (never in a submission).
-
-Accelerator: **GPU L4 x4**. Inputs: competition, wheelhouse dataset, Gemma 4 e4b (and e2b) QAT models.
-""")]
+def gold_check_nb() -> tuple[dict, str]:
+    cells = [first_cell("C00")]
     cells += code_cells()
+    cells.append(code(SETUP.format(gpu="False")))
+    cells.append(code(C00_RUN))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C00"]["output"])))
+    return _nb(cells), SPECS["C00"]["file"]
+
+
+PRECHECK_00 = """
+import sys, json
+sys.path.insert(0, '/kaggle/working/pilot')
+from pilot_c import kaggle_runner as kr
+_gc = json.loads(kr.find_input_json('C00_gold_check.json').read_text())   # fails fast if C00's output is not attached
+assert len(_gc['selection']['smoke3']) == 3, f"notebooks/C00_gold_check__CPU.ipynb found fewer than 3 valid tasks: {_gc['selection']['smoke3']}"
+print('C00 output OK; smoke tasks:', _gc['selection']['smoke3'], '| valid tasks:', _gc['summary']['valid'])
+"""
+
+
+def smoke_nb() -> tuple[dict, str]:
+    cells = [first_cell("C01")]
+    cells += code_cells()
+    cells.append(code(PRECHECK_00))
     cells.append(code(SETUP.format(gpu="True")))
-    cells.append(code("""
-# ---- configuration (only edit here)
-# Task set: pre-registered candidate order per repo; keep those whose GOLD patch resolves here (~4 min CPU),
-# then take the first `quota` per repo (fastapi 7, rich 6, requests 2).
-cands, quota = IDS['candidates_in_order'], IDS['quota']
-gcheck = kr.gold_check([i for v in cands.values() for i in v], Path('/kaggle/working/pilot_c_pilot_goldcheck.json'))
-ok = {r['instance_id'] for r in gcheck['rows'] if r.get('valid')}
-TASKS = [i for repo, k in quota.items() for i in [x for x in cands[repo] if x in ok][:k]]
-print(len(TASKS), 'pilot tasks:', TASKS)
-if len(TASKS) < 15:
-    print('WARNING: fewer than 15 gold-solvable candidates; the pilot runs on', len(TASKS), 'tasks')
-BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)
-CONCURRENCY = 5
-MAX_SESSION_HOURS = 3.9                        # hard ceiling agreed for the pilot is 4 L4x4 hours
-RUN_E2B = False
-conds = [('O0', 1), ('O-func', 1), ('O-all', 1), ('O0', 2)]
-PLAN = [('gemma-4-e4b-it-qat-w4a16-ct', conds)] + ([('gemma-4-e2b-it-qat-w4a16-ct', conds)] if RUN_E2B else [])
-"""))
-    cells.append(code(GPU_LOOP.format(name=name)))
-    cells.append(md(RESULTS_NOTE.format(name=name)))
-    return _nb(cells), _meta(name, gpu=True)
+    cells.append(code(C01_CONFIG))
+    cells.append(code(GPU_LOOP.format(nbfile=SPECS["C01"]["file"], out=SPECS["C01"]["output"])))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C01"]["output"])))
+    return _nb(cells), SPECS["C01"]["file"]
 
 
 PROBE_CONFIG = """
 # ---- configuration (only edit here) — docs/PLAN.md (frozen at 168d115)
 PLAN_COMMIT = '168d11573bf20003435e4b4a1874cfaebddd0ce1'
-GOLD_CHECK = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # notebook 00 output
+GOLD_CHECK = json.loads(kr.find_input_json('C00_gold_check.json').read_text())   # output of notebooks/C00_gold_check__CPU.ipynb
 order = GOLD_CHECK['selection']['eligible_valid_in_order']       # pre-registered per-repo order of VALID tasks
 rr, k = [], 0
 while any(len(v) > k for v in order.values()):
@@ -236,8 +266,8 @@ print(len(CANDIDATES), 'candidates;', 'low power (<20)' if len(CANDIDATES) < 20 
 PROBE_RUN = """
 from pilot_c import probe_runner as pr
 from pilot_c import probe as pb
-OUT = Path('/kaggle/working/pilot_c_probe.json')
-summary = {'pilot': 'C', 'notebook': 'probe', 'plan_commit': PLAN_COMMIT, 'env': kr.env_info(), 'sizes': [], 'd1': [], 'd2': []}
+OUT = Path('/kaggle/working/C03_probe.json')
+summary = {'pilot': 'C', 'notebook': 'notebooks/C03_probe__L4x4.ipynb', 'plan_commit': PLAN_COMMIT, 'env': kr.env_info(), 'sizes': [], 'd1': [], 'd2': []}
 def save():
     summary['summary'] = pr.summarize(summary['d1'], summary['d2'])
     summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
@@ -289,47 +319,31 @@ from pilot_c import probe_runner as pr
 recs_path = kr.find_input_json('probe_records.jsonl')
 sample_files = sorted(recs_path.parent.glob('probe_samples_*.jsonl'))
 print('records', recs_path, 'samples', [p.name for p in sample_files])
-res = pr.verify_samples(recs_path, sample_files, Path('/kaggle/working/pilot_c_probe_verify.json'))
+res = pr.verify_samples(recs_path, sample_files, Path('/kaggle/working/C03v_test_verify.json'))
 print(json.dumps(res['summary'], indent=1))
 """
 
 
-def probe_nb() -> dict:
-    name = "probe"
-    cells = [md("""
-# Pilot C — 03: information-ladder probe (GPU, L4 x4)
-Pre-registered design: `docs/PLAN.md` (frozen at commit 168d115). For each valid task (from notebook 00) and each size
-(31b, e4b, 12b, e2b): (1) capture the agent's exact contexts by running the real harness loop against a capture server
-(CPU), (2) score the log-likelihood of the canonical correct action under each rung (depth 1, `prompt_logprobs`),
-(3) sample one next action with the agent's settings (depth 2). 31b first writes the "change in words" rung.
-
-Accelerator: **GPU L4 x4**. Inputs: competition, wheelhouse dataset, all four Gemma 4 QAT models, **notebook 00's output**.
-Time guard `MAX_SESSION_HOURS` (default 2.9 h). Commit only `pilot_c_probe.json` (ids + numbers). Keep `private/` on Kaggle;
-notebook 03v (CPU) runs the tests on the sampled edits from it.
-""")]
+def probe_nb() -> tuple[dict, str]:
+    cells = [first_cell("C03")]
     cells += code_cells()
     cells.append(code(PRECHECK_00.replace("import sys, json", "import os, sys, json").replace(
-        "assert len(_gc['selection']['smoke3']) == 3, f\"notebook 00 found fewer than 3 valid tasks: {_gc['selection']['smoke3']}\"",
+        "assert len(_gc['selection']['smoke3']) == 3, f\"notebooks/C00_gold_check__CPU.ipynb found fewer than 3 valid tasks: {_gc['selection']['smoke3']}\"",
         "assert _gc['summary']['valid'] >= int(os.environ.get('PILOT_MIN_VALID', 10)), f\"too few valid tasks: {_gc['summary']['valid']}\"")))
     cells.append(code(SETUP.format(gpu="True")))
     cells.append(code(PROBE_CONFIG))
     cells.append(code(PROBE_RUN))
-    cells.append(md(RESULTS_NOTE.format(name="probe")))
-    return _nb(cells), _meta(name, gpu=True)
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C03"]["output"])))
+    return _nb(cells), SPECS["C03"]["file"]
 
 
-def probe_verify_nb() -> dict:
-    name = "probe_verify_cpu"
-    cells = [md("""
-# Pilot C — 03v: run the required tests on the probe's sampled edits (CPU only, no GPU quota)
-Attach notebook 03's output (it contains `private/probe_records.jsonl` and `private/probe_samples_*.jsonl`).
-Each sampled S-use edit is applied alone to the base snapshot and verified with the scorer's Phase-2 path.
-""")]
+def probe_verify_nb() -> tuple[dict, str]:
+    cells = [first_cell("C03v")]
     cells += code_cells()
     cells.append(code(SETUP.format(gpu="False")))
     cells.append(code(VERIFY_RUN))
-    cells.append(md(RESULTS_NOTE.format(name="probe_verify")))
-    return _nb(cells), _meta(name, gpu=False)
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C03v"]["output"])))
+    return _nb(cells), SPECS["C03v"]["file"]
 
 
 def _nb(cells: list[dict]) -> dict:
@@ -339,31 +353,14 @@ def _nb(cells: list[dict]) -> dict:
                                          "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
 
 
-def _meta(name: str, gpu: bool) -> dict:
-    m = {"id": f"YOUR_KAGGLE_USERNAME/pilot-c-{name.replace('_', '-')}", "title": f"Pilot C {name.replace('_', ' ')}",
-         "code_file": f"{name}.ipynb", "language": "python", "kernel_type": "notebook", "is_private": True,
-         "enable_gpu": gpu, "enable_tpu": False, "enable_internet": False,
-         "dataset_sources": ["metric/gemma-4-developer-agent-wheelhouse"], "kernel_sources": [],
-         "competition_sources": ["gemma-4-developer-agent"], "model_sources": MODELS if gpu else [],
-         "docker_image": DOCKER_IMAGE}
-    if name in ("smoke_timing", "probe"):
-        m["kernel_sources"] = ["YOUR_KAGGLE_USERNAME/pilot-c-gold-check-cpu"]
-    if name == "probe_verify_cpu":
-        m["kernel_sources"] = ["YOUR_KAGGLE_USERNAME/pilot-c-probe"]
-    if gpu:
-        m["machine_shape"] = "NvidiaL4"  # same as the official starter; choose "GPU L4 x4" in the UI if needed
-    return m
-
-
 def main() -> None:
-    for build in (gold_check_nb, smoke_nb, pilot_nb, probe_nb, probe_verify_nb):
-        nb, meta = build()
-        name = meta["code_file"][:-6]
-        d = ROOT / "notebooks" / f"pilot_c_{name}"
-        d.mkdir(parents=True, exist_ok=True)
-        (d / meta["code_file"]).write_text(json.dumps(nb, indent=1), encoding="utf-8")
-        (d / "kernel-metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-        print("wrote", d)
+    out = ROOT / "notebooks"
+    for build in (gold_check_nb, smoke_nb, probe_nb, probe_verify_nb):
+        nb, fname = build()
+        (out / fname).write_text(json.dumps(nb, indent=1), encoding="utf-8")
+        print("wrote", out / fname)
+    (out / "README.md").write_text(readme(), encoding="utf-8")
+    print("wrote", out / "README.md")
 
 
 if __name__ == "__main__":

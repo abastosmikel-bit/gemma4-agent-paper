@@ -5,7 +5,8 @@ Flow per session:
   2. graph    : harness get_code_neighbors / get_code_subgraph for gold and wrong symbols (CPU)
   3. capture  : real agent loop against the capture server -> exact S-find / S-use contexts (CPU)
   4. per size : start vLLM (starter-identical) -> self-check -> [31b: words] -> depth 1 -> depth 2
-Outputs: /kaggle/working/pilot_c_probe.json (numbers + task ids only; commit it),
+Used by notebooks/C03_probe__L4x4.ipynb and notebooks/C03v_test_verify__CPU.ipynb.
+Outputs: /kaggle/working/C03_probe.json (numbers + task ids only; commit it),
          /kaggle/working/private/probe_*.jsonl (contexts, records, sampled edits; never commit).
 """
 from __future__ import annotations
@@ -419,7 +420,7 @@ def summarize(d1: list[dict], d2: list[dict]) -> dict[str, Any]:
     return out
 
 
-# --------------------------------------------------------------------------- CPU verification (notebook 03v)
+# --------------------------------------------------------------------------- CPU verification (notebooks/C03v_test_verify__CPU.ipynb)
 
 def verify_samples(records_path: Path, sample_files: list[Path], out_path: Path, timeout_s: int = 300) -> dict[str, Any]:
     """Apply each sampled S-use edit alone to the base snapshot and run the scorer's Phase-2 verification.

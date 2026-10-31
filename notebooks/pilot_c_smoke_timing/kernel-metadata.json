@@ -11,7 +11,9 @@
   "dataset_sources": [
     "metric/gemma-4-developer-agent-wheelhouse"
   ],
-  "kernel_sources": [],
+  "kernel_sources": [
+    "YOUR_KAGGLE_USERNAME/pilot-c-gold-check-cpu"
+  ],
   "competition_sources": [
     "gemma-4-developer-agent"
   ],

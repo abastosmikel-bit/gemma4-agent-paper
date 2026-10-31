@@ -32,8 +32,9 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from common.metrics import aggregate, paired_flips, task_metrics  # noqa: E402
 from common.tasks import diff_scopes, gold_locations, load_tasks  # noqa: E402
+from common import runtime_probes as rp  # noqa: E402
 from common.trace import load_trace  # noqa: E402
-from pilot_c.hints import rewrite_task  # noqa: E402
+from pilot_c.hints import _HEADER as HINT_HEADER, rewrite_task  # noqa: E402
 
 WORK = Path(os.environ.get("PILOT_WORK_DIR", "/kaggle/working"))
 PRIVATE = WORK / "private"
@@ -213,7 +214,9 @@ def describe_agent(agent_dir: Path) -> dict[str, Any]:
 
 
 def start_server(agent_dir: Path):
-    """Starter-identical vLLM launch. Returns (server, models, startup_seconds)."""
+    """Starter-identical vLLM launch. Returns (server, models, adapters, startup_seconds)."""
+    if os.environ.get("PILOT_MOCK_LLM"):  # local papermill dry runs only (no GPU, scripted mock LLM)
+        return _start_mock_server(agent_dir)
     import litellm
     import torch
     from adk_submission import VllmConfig, VllmServer, discover_adapters
@@ -247,6 +250,32 @@ def start_server(agent_dir: Path):
     models = server.create_model_registry(aliases=[model], model_prefix="openai/", api_key=os.environ.get("LOCAL_API_KEY", "EMPTY"))
     print(f"vLLM up for {model} in {startup:.0f}s (tp={tp})")
     return server, models, adapters, startup
+
+
+def _start_mock_server(agent_dir: Path):
+    """Dry-run stand-in for vLLM: the scripted OpenAI-compatible mock from tests/ (PILOT_REPO)."""
+    import litellm
+    from adk_submission import discover_adapters
+    from adk_submission.registry import ModelRegistry
+    from adk_submission.resolvers.generation import install_litellm_reasoning_patch
+    from google.adk.models.lite_llm import LiteLlm
+    from swegemma.config import ALLOWED_ADAPTER_EXTENSIONS
+    sys.path.insert(0, os.environ["PILOT_REPO"])
+    from tests.mock_openai_server import make_script, serve
+
+    litellm.drop_params = True
+    install_litellm_reasoning_patch()
+    model = describe_agent(agent_dir)["model"]
+    srv = serve(make_script("README.md"), port=int(os.environ.get("PILOT_MOCK_PORT", "8001")))
+    reg = ModelRegistry()
+    reg.register(model, LiteLlm(model="openai/mock", api_base=f"http://127.0.0.1:{srv.server_address[1]}/v1", api_key="EMPTY"))
+    ad = discover_adapters(str(agent_dir), adapter_extensions=ALLOWED_ADAPTER_EXTENSIONS)
+
+    class _S:
+        def stop(self):
+            srv.shutdown()
+            srv.server_close()
+    return _S(), reg, ad, 0.0
 
 
 # --------------------------------------------------------------------------- evaluation
@@ -301,8 +330,39 @@ def collect_rows(results, results_dir: Path, gold: dict[str, dict]) -> list[dict
         scopes = diff_scopes(patch, d / "snapshots" / f"{iid}.tgz") if patch.strip() else []
         row = task_metrics(rd, events, gold=gold.get(iid), agent_patch_scopes=scopes)
         row["trace_found"] = bool(events)
+        row["trace_compaction_entries"] = sum(1 for e in events if e.type == "compaction")
+        row.update({f"cmp_{k}": v for k, v in rp.task_compaction_stats(
+            iid, [e.timestamp for e in events if e.type == "tool_call"]).items()})
         rows.append(row)
     return rows
+
+
+def compaction_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Run-level answer to: how often/when does compaction fire, what does it drop, is it in the trace?"""
+    fired = [r for r in rows if r.get("cmp_compactions")]
+    firsts = sorted(r["cmp_first_compaction_at_call"] for r in fired if r.get("cmp_first_compaction_at_call") is not None)
+    surv = [r["cmp_marker_survival"] for r in fired if r.get("cmp_marker_survival") is not None]
+    return {
+        "tasks": len(rows), "tasks_with_compaction": len(fired),
+        "compactions_total": sum(r.get("cmp_compactions") or 0 for r in rows),
+        "first_compaction_at_call_median": firsts[len(firsts) // 2] if firsts else None,
+        "first_compaction_at_call_values": firsts,
+        "function_calls_dropped": sum(r.get("cmp_function_calls_dropped") or 0 for r in rows),
+        "function_responses_dropped": sum(r.get("cmp_function_responses_dropped") or 0 for r in rows),
+        "skill_responses_dropped": sum(r.get("cmp_skill_responses_dropped") or 0 for r in rows),
+        "task_prompt_compacted_tasks": sum(bool(r.get("cmp_task_prompt_compacted")) for r in fired),
+        "requests_after_compaction_with_task_prompt": sum(r.get("cmp_after_with_task_prompt") or 0 for r in fired),
+        "requests_after_compaction": sum(r.get("cmp_requests_after_first_compaction") or 0 for r in fired),
+        "marker_survival_mean": round(sum(surv) / len(surv), 4) if surv else None,
+        "trace_compaction_entries_total": sum(r.get("trace_compaction_entries") or 0 for r in rows),
+        "markers": "per task: hint header, gold file path(s), gold function short names",
+    }
+
+
+def _markers_for(g: dict) -> list[str]:
+    out = [HINT_HEADER] + list(g.get("src_files") or [])
+    out += [f["qualname"].split(".")[-1] for f in g.get("functions") or []]
+    return list(dict.fromkeys(out))
 
 
 def run_condition(agent_dir: Path, models, adapters, task_ids: list[str], gold: dict[str, dict], condition: str,
@@ -315,13 +375,19 @@ def run_condition(agent_dir: Path, models, adapters, task_ids: list[str], gold: 
         shutil.rmtree(rdir)
     rdir.mkdir(parents=True)
     cfg = make_eval_config(agent_dir, models, adapters, tasks_path, task_ids, rdir, concurrency)
+    rp.install()
+    rp.reset()
+    for iid in task_ids:
+        rp.MARKERS[iid] = _markers_for(gold.get(iid) or {})
     t0 = time.perf_counter()
     res = run_sync(Evaluator(cfg).run)
     batch = time.perf_counter() - t0
     rows = collect_rows(res.task_results, rdir, gold)
     agg = aggregate(rows)
+    agg["compaction"] = compaction_summary(rows)
     print(f"[{model_short} {condition} r{replicate}] resolved {agg['resolved']}/{agg['n_tasks']} "
-          f"batch {batch/60:.1f} min, mean wall {agg['wall_s_mean']}s, calls {agg['tool_calls_mean']}")
+          f"batch {batch/60:.1f} min, mean wall {agg['wall_s_mean']}s, calls {agg['tool_calls_mean']}, "
+          f"compactions {agg['compaction']['compactions_total']} (in trace: {agg['compaction']['trace_compaction_entries_total']})")
     return {"model": model_short, "condition": condition, "replicate": replicate, "concurrency": concurrency,
             "batch_wall_s": round(batch, 1), "aggregate": agg, "rows": rows}
 
@@ -366,14 +432,84 @@ def gold_check(task_ids: list[str], out_path: Path, timeout_s: int = 300) -> dic
         t = tasks[iid]
         snap, base, patch = resolve_task_snapshot_paths(d / "snapshots", iid, t.repo)
         t0 = time.perf_counter()
+        out_text = ""
         try:
             r = run_sync(verify_task, ev.docker, cfg, t, snap, base_snapshot_path=base, patch_path=patch,
                          agent_patch=t.patch, agent_error=None, trace=None, start_time=t0)
             ok, err = bool(r.resolved), (r.error or "")[:160] or None
+            out_text = r.test_output or ""
         except Exception as e:  # noqa: BLE001
             ok, err = False, f"{type(e).__name__}: {e}"[:160]
         dt = time.perf_counter() - t0
-        rows.append({"instance_id": iid, "gold_resolved": ok, "verify_s": round(dt, 1), "error": err})
-        print(f"[{i}/{len(task_ids)}] {iid} gold_resolved={ok} {dt:.0f}s {err or ''}")
-        out_path.write_text(json.dumps({"rows": rows, "env": env_info()}, indent=1))
-    return {"rows": rows}
+        cls, mods = classify_gold_failure(ok, err, out_text)
+        rows.append({"instance_id": iid, "repo": t.repo, "gold_resolved": ok, "verify_s": round(dt, 1), "error": err,
+                     "failure_class": cls, "missing_modules": mods})  # for missing_fixture: fixture names
+        print(f"[{i}/{len(task_ids)}] {iid} gold_resolved={ok} {cls} {mods or ''} {dt:.0f}s {err or ''}")
+        out_path.write_text(json.dumps({"rows": rows, "summary": gold_check_summary(rows), "env": env_info()}, indent=1))
+    return {"rows": rows, "summary": gold_check_summary(rows)}
+
+
+_MISSING_MOD = re.compile(r"No module named '([A-Za-z0-9_\.]+)'")
+_FIXTURE = re.compile(r"fixture '([A-Za-z0-9_]+)' not found|recursive dependency involving fixture '([A-Za-z0-9_]+)'")
+
+
+def classify_gold_failure(ok: bool, err: str | None, test_output: str) -> tuple[str, list[str]]:
+    """Why a gold patch failed (module names / fixture names only; test output is not stored)."""
+    if ok:
+        return "resolved", []
+    mods = sorted({m.split(".")[0] for m in _MISSING_MOD.findall(test_output or "")})
+    if mods:
+        return "missing_module", mods
+    fx = sorted({a or b for a, b in _FIXTURE.findall(test_output or "")})
+    if fx:
+        return "missing_fixture", fx
+    e = err or ""
+    if "Failed to apply" in e:
+        return "patch_apply_failed", []
+    if "TimeoutExceeded" in e or "timed out" in e.lower():
+        return "timeout", []
+    if e:
+        return "harness_error", []
+    return "test_failure", []
+
+
+def gold_check_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    from collections import Counter
+    by_repo: dict[str, dict[str, int]] = {}
+    for r in rows:
+        d = by_repo.setdefault(r.get("repo", "?"), {"checked": 0, "gold_resolved": 0})
+        d["checked"] += 1
+        d["gold_resolved"] += int(r["gold_resolved"])
+    mods = Counter(m for r in rows if r["failure_class"] == "missing_module" for m in r.get("missing_modules") or [])
+    fixtures = Counter(m for r in rows if r["failure_class"] == "missing_fixture" for m in r.get("missing_modules") or [])
+    fastapi_inline_or_dirty = sum(1 for r in rows if r.get("repo") == "fastapi/fastapi" and r["failure_class"] == "missing_module"
+                                  and {"inline_snapshot", "dirty_equals"} & set(r.get("missing_modules") or []))
+    return {"checked": len(rows), "gold_resolved": sum(r["gold_resolved"] for r in rows), "by_repo": by_repo,
+            "failure_classes": dict(Counter(r["failure_class"] for r in rows)), "missing_modules": dict(mods),
+            "missing_fixtures": dict(fixtures),
+            "fastapi_failing_on_inline_snapshot_or_dirty_equals": fastapi_inline_or_dirty}
+
+
+def select_from_gold_check(gold_all: dict[str, dict], check_rows: list[dict[str, Any]], seed: int = 20261031) -> dict[str, Any]:
+    """Pre-registered order: per repo, eligible tasks whose gold passes HERE, seeded shuffle.
+    smoke3 = first of each repo. IDs only."""
+    import random
+    from pilot_c.select_tasks import QUOTA, eligible
+    ok = {r["instance_id"] for r in check_rows if r["gold_resolved"]}
+    rng = random.Random(seed)
+    order: dict[str, list[str]] = {}
+    for repo in QUOTA:
+        pool = sorted(i for i, g in gold_all.items() if g["repo"] == repo and eligible(g) and i in ok)
+        rng.shuffle(pool)
+        order[repo] = pool
+    return {"seed": seed, "eligible_gold_pass_in_order": order, "smoke3": [v[0] for v in order.values() if v],
+            "gold_pass_all": sorted(ok)}
+
+
+def find_input_json(name: str) -> Path:
+    """Locate an attached notebook output (e.g. notebook 00's JSON) under /kaggle/input."""
+    root = os.environ.get("PILOT_INPUT_ROOT", "/kaggle/input")
+    hits = sorted(glob.glob(f"{root}/**/{name}", recursive=True))
+    if not hits:
+        raise FileNotFoundError(f"{name} not found under {root}: attach notebook 00's output as an input first")
+    return Path(hits[0])

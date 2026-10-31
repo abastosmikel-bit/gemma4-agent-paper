@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ["common/__init__.py", "common/diffs.py", "common/locate.py", "common/tasks.py", "common/trace.py",
-              "common/metrics.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json"]
+              "common/metrics.py", "common/runtime_probes.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json"]
 DOCKER_IMAGE = "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461"
 MODELS = ["google/gemma-4/Other/gemma-4-e4b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-e2b-it-qat-w4a16-ct/2",
           "google/gemma-4/Other/gemma-4-31b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-12b-it-qat-w4a16-ct/2"]
@@ -33,6 +33,10 @@ def code_cells() -> list[dict]:
     for rel in CODE_FILES:
         p = ROOT / rel
         body = p.read_text(encoding="utf-8") if p.exists() else ""
+        if not body.strip():
+            # papermill/IPython rejects an empty %%writefile body ("cell body is empty")
+            body = "# (empty module)\n" if rel.endswith(".py") else body
+        assert body.strip(), f"{rel}: %%writefile cell would be empty"
         cells.append(code(f"%%writefile /kaggle/working/pilot/{rel}\n{body}"))
     return cells
 
@@ -95,7 +99,10 @@ and records whether it resolves. Tasks that fail here are unsolvable in this env
 from the pilot. Also verifies the gold-location extraction runs on Kaggle.
 
 Accelerator: **None (CPU)**. Inputs: competition `gemma-4-developer-agent`, dataset `metric/gemma-4-developer-agent-wheelhouse`.
-Expected time: ~30-60 min for all 129 tasks (written incrementally; you can stop early — eligible tasks run first).
+Expected time: ~40-90 min for all 129 tasks (written incrementally; eligible tasks run first).
+Also records WHY a gold patch fails (missing module / missing fixture / test failure ...), e.g. to check the forum
+report that 27 fastapi tasks fail on missing `inline_snapshot` / `dirty_equals`, and picks notebook 01's smoke tasks.
+**Notebook 01 needs this notebook's output attached as an input** (it reads `pilot_c_gold_check_kaggle.json`).
 """)]
     cells += code_cells()
     cells.append(code(SETUP.format(gpu="False")))
@@ -111,11 +118,26 @@ gold_all = kr.build_gold(all_ids)              # derived data: stays in memory /
 first = [i for i in all_ids if eligible(gold_all[i])]
 order = first + [i for i in all_ids if i not in first]
 print(len(first), 'eligible tasks first, then the rest')
-res = kr.gold_check(order, Path('/kaggle/working/pilot_c_gold_check_kaggle.json'))
+OUT = Path('/kaggle/working/pilot_c_gold_check_kaggle.json')
+res = kr.gold_check(order, OUT)
 print('gold resolves:', sum(r['gold_resolved'] for r in res['rows']), '/', len(res['rows']))
+print(json.dumps(res['summary'], indent=1))
+# pre-registered selection for notebook 01 (smoke3) and later runs, from THIS environment's gold check
+final = json.loads(OUT.read_text())
+final['selection'] = kr.select_from_gold_check(gold_all, res['rows'])
+OUT.write_text(json.dumps(final, indent=1))
+print('smoke3 for notebook 01:', final['selection']['smoke3'])
 """))
     cells.append(md(RESULTS_NOTE.format(name="gold_check_kaggle")))
     return _nb(cells), _meta(name, gpu=False)
+
+
+PRECHECK_00 = """
+import sys, json
+sys.path.insert(0, '/kaggle/working/pilot')
+from pilot_c import kaggle_runner as kr
+print('notebook 00 output found:', kr.find_input_json('pilot_c_gold_check_kaggle.json'))   # fails fast if not attached
+"""
 
 
 def smoke_nb() -> dict:
@@ -124,17 +146,24 @@ def smoke_nb() -> dict:
 # Pilot C — 01: smoke test + per-size timing (GPU, L4 x4)
 Runs the unchanged official sample agent (adapters removed, model swapped) on the **same 3 tasks** at O0 for every size,
 plus e4b at O-all to exercise the hint path with a real model. Purpose: (1) prove the pipeline works on Kaggle,
-(2) measure vLLM startup and minutes per task for each size, to price the full grid.
+(2) measure vLLM startup and minutes per task for each size, (3) log context compaction (how often, when, what it drops,
+whether it shows up in the trace) via runtime probes on the ADK summarizer and LLM client.
+Budget: 40 tool calls / 15 min per task (same as pilot A).
 
-Accelerator: **GPU L4 x4** (2x quota). Inputs: competition, wheelhouse dataset, all four Gemma 4 QAT models.
+Accelerator: **GPU L4 x4** (2x quota). Inputs: competition, wheelhouse dataset, all four Gemma 4 QAT models,
+and **the output of notebook 00** (Add input → Notebook output → pilot-c-gold-check-cpu). Run 00 first.
 Time guard: stops launching new work after `MAX_SESSION_HOURS`.
 """)]
     cells += code_cells()
+    cells.append(code(PRECHECK_00))
     cells.append(code(SETUP.format(gpu="True")))
     cells.append(code("""
 # ---- configuration (only edit here)
-TASKS = IDS['smoke3_gpu']                      # same 3 tasks for every size
-BUDGET = dict(timeout_seconds=120, max_tool_calls=50, max_time_minutes=15)
+GOLD_CHECK = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # notebook 00 output
+TASKS = GOLD_CHECK['selection']['smoke3']      # same 3 gold-solvable tasks for every size
+assert len(TASKS) == 3, f'expected 3 smoke tasks from notebook 00, got {TASKS}'
+print('smoke tasks (from notebook 00):', TASKS)
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # same as pilot A
 CONCURRENCY = 3
 MAX_SESSION_HOURS = 1.75
 PLAN = [
@@ -143,8 +172,6 @@ PLAN = [
     ('gemma-4-12b-it-qat-w4a16-ct', [('O0', 1)]),
     ('gemma-4-31b-it-qat-w4a16-ct', [('O0', 1)]),
 ]
-# cheap sanity check that the 3 tasks are solvable by their gold patch here (CPU, ~1 min)
-gc = kr.gold_check(TASKS, Path('/kaggle/working/pilot_c_smoke_goldcheck.json'))
 """))
     cells.append(code(GPU_LOOP.format(name=name)))
     cells.append(md(RESULTS_NOTE.format(name=name)))
@@ -173,7 +200,7 @@ TASKS = [i for repo, k in quota.items() for i in [x for x in cands[repo] if x in
 print(len(TASKS), 'pilot tasks:', TASKS)
 if len(TASKS) < 15:
     print('WARNING: fewer than 15 gold-solvable candidates; the pilot runs on', len(TASKS), 'tasks')
-BUDGET = dict(timeout_seconds=120, max_tool_calls=50, max_time_minutes=15)
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)
 CONCURRENCY = 5
 MAX_SESSION_HOURS = 3.9                        # hard ceiling agreed for the pilot is 4 L4x4 hours
 RUN_E2B = False
@@ -186,6 +213,8 @@ PLAN = [('gemma-4-e4b-it-qat-w4a16-ct', conds)] + ([('gemma-4-e2b-it-qat-w4a16-c
 
 
 def _nb(cells: list[dict]) -> dict:
+    for i, c in enumerate(cells):
+        c["id"] = f"cell-{i:03d}"  # nbformat >= 4.5 requires cell ids
     return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
                                          "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
 
@@ -197,6 +226,8 @@ def _meta(name: str, gpu: bool) -> dict:
          "dataset_sources": ["metric/gemma-4-developer-agent-wheelhouse"], "kernel_sources": [],
          "competition_sources": ["gemma-4-developer-agent"], "model_sources": MODELS if gpu else [],
          "docker_image": DOCKER_IMAGE}
+    if name == "smoke_timing":
+        m["kernel_sources"] = ["YOUR_KAGGLE_USERNAME/pilot-c-gold-check-cpu"]
     if gpu:
         m["machine_shape"] = "NvidiaL4"  # same as the official starter; choose "GPU L4 x4" in the UI if needed
     return m

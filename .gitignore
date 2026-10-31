@@ -1,0 +1,22 @@
+# Competition data and anything derived from it never enters git.
+data/
+work/
+_build/
+snapshots/
+graphs/
+embeddings/
+wheels/
+*.tgz
+*.tar
+*.tar.gz
+*.npz
+*.whl
+*.parquet
+tasks*.jsonl
+*.patch
+*.diff
+traces/
+results/raw/
+__pycache__/
+*.pyc
+.venv*/

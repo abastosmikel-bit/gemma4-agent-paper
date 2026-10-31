@@ -314,3 +314,27 @@ with the gold-solvable tasks, so the baselines cover the same tasks.
 
 Repeat-call and failed-edit definitions are identical. Malformed-call definitions differ (above),
 so the pilots' `malformed_share` numbers are **not comparable** until merged.
+
+## 10. Phase 3 status (2026-10-31; no GPU used)
+
+- **Notebooks fixed and dry-run with papermill** (`tests/papermill_dryrun.sh`), in their real dependency order:
+  00 → 01, and 00 → 03 probe → 03v. The cause of the Kaggle failure was empty `%%writefile` cells; the builder now asserts
+  that no cell is empty.
+- **00** also runs the no-patch baseline: valid = gold passes AND no-patch fails. It classifies failures (missing module /
+  fixture / test failure / …), counts fastapi tasks failing on `inline_snapshot` / `dirty_equals` (the forum claim), and
+  writes the pre-registered task order. **01** reads its 3 tasks from 00's output, uses 40 calls / 15 min, and logs
+  compaction through runtime probes.
+- **Findings from the checks** (details and sources in `LEARNINGS.md` on `paper/main`):
+  - The local Evaluator counts empty patches; the scorer does not. `resolved` now requires a non-empty patch.
+  - 5/72 gold-passing tasks pass with no patch (local).
+  - Token-threshold compaction is invisible in harness traces (mock run: 0 in trace vs 15 seen by the probe).
+  - Compaction also summarizes away the task prompt and hints.
+- **Probe:**
+  - Plan frozen at `168d115` (`docs/PLAN.md`); deviations found before any GPU run are in its §11.
+  - Contexts are captured through the real agent loop. On 4/4 dry-run tasks the captured read output equals the
+    harness format.
+  - The canonical edit equals the gold patch on 9/10 local tasks; the 10th differs only by out-of-function changes,
+    by design.
+  - The vLLM 0.19.1 API fields the probe uses were checked in its source.
+- **Shared branch `paper/main`:** `LEARNINGS.md`, `DECISIONS.md` (plan hash recorded), `RESULTS.md`,
+  `docs/PROBE_INPUT.md` (v2).

@@ -1,7 +1,8 @@
 """Per-task and aggregate metrics shared by all pilots.
 
 Common metric set (identical definitions in every pilot):
-  resolved          scorer verdict (Phase 2 pytest + JUnit validation)
+  resolved          scorer verdict (Phase 2 pytest + JUnit validation) AND non-empty patch, as in the
+                    scorer, which never verifies an empty prediction (resolved_local = raw harness flag)
   wall_s            TaskResult.duration_seconds (setup + agent + verification)
   agent_s           last event timestamp in the trace (time inside the agent loop)
   tool_calls        tool_call events in the ROOT trace. Calls made inside an AgentTool sub-agent
@@ -114,7 +115,11 @@ def task_metrics(
 
     row: dict[str, Any] = {
         "instance_id": result.get("task_id") or result.get("instance_id"),
-        "resolved": bool(result.get("resolved")),
+        # The scorer only verifies NON-EMPTY predictions (empty -> "NO_PATCH", unresolved), while the local
+        # swegemma Evaluator also verifies empty patches; a task whose tests already pass at base_commit then
+        # counts as resolved locally. `resolved` follows the scorer; `resolved_local` is the raw harness flag.
+        "resolved": bool(result.get("resolved")) and bool((result.get("agent_patch") or "").strip()),
+        "resolved_local": bool(result.get("resolved")),
         "error": (result.get("error_message") or "")[:120] or None,
         "wall_s": round(float(result.get("duration_seconds") or 0.0), 1),
         "agent_s": round(agent_s, 1),

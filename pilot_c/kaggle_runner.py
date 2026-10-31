@@ -409,9 +409,9 @@ def save_summary(path: Path, summary: dict[str, Any]) -> None:
 
 # --------------------------------------------------------------------------- CPU gold check
 
-def gold_check(task_ids: list[str], out_path: Path, timeout_s: int = 300) -> dict[str, Any]:
-    """CPU-only: apply each task's GOLD patch in the scorer's Phase-2 sandbox and record resolved.
-    Tells us which tasks are solvable at all in the Kaggle subprocess sandbox. Numbers only."""
+def gold_check(task_ids: list[str], out_path: Path, timeout_s: int = 300, baseline: bool = True) -> dict[str, Any]:
+    """CPU-only: apply each task's GOLD patch in the scorer's Phase-2 sandbox and record resolved; also run the
+    same verification with NO patch (baseline). valid = gold passes AND no-patch fails. Numbers only."""
     from adk_submission.registry import ModelRegistry
     from swegemma.config import EvalConfig
     from swegemma.deduplication import resolve_task_snapshot_paths
@@ -441,10 +441,19 @@ def gold_check(task_ids: list[str], out_path: Path, timeout_s: int = 300) -> dic
         except Exception as e:  # noqa: BLE001
             ok, err = False, f"{type(e).__name__}: {e}"[:160]
         dt = time.perf_counter() - t0
+        base_ok = None
+        if baseline:  # the same tests with NO patch must fail, else any harmless edit "solves" the task
+            try:
+                rb = run_sync(verify_task, ev.docker, cfg, t, snap, base_snapshot_path=base, patch_path=patch,
+                              agent_patch="", agent_error=None, trace=None, start_time=time.perf_counter())
+                base_ok = bool(rb.resolved)
+            except Exception:  # noqa: BLE001
+                base_ok = None
         cls, mods = classify_gold_failure(ok, err, out_text)
-        rows.append({"instance_id": iid, "repo": t.repo, "gold_resolved": ok, "verify_s": round(dt, 1), "error": err,
+        rows.append({"instance_id": iid, "repo": t.repo, "gold_resolved": ok, "baseline_resolved": base_ok,
+                     "valid": bool(ok and base_ok is False), "verify_s": round(dt, 1), "error": err,
                      "failure_class": cls, "missing_modules": mods})  # for missing_fixture: fixture names
-        print(f"[{i}/{len(task_ids)}] {iid} gold_resolved={ok} {cls} {mods or ''} {dt:.0f}s {err or ''}")
+        print(f"[{i}/{len(task_ids)}] {iid} gold={ok} no_patch={base_ok} {cls} {mods or ''} {dt:.0f}s {err or ''}")
         out_path.write_text(json.dumps({"rows": rows, "summary": gold_check_summary(rows), "env": env_info()}, indent=1))
     return {"rows": rows, "summary": gold_check_summary(rows)}
 
@@ -480,30 +489,41 @@ def gold_check_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         d = by_repo.setdefault(r.get("repo", "?"), {"checked": 0, "gold_resolved": 0})
         d["checked"] += 1
         d["gold_resolved"] += int(r["gold_resolved"])
+        d["valid"] = d.get("valid", 0) + int(bool(r.get("valid")))
     mods = Counter(m for r in rows if r["failure_class"] == "missing_module" for m in r.get("missing_modules") or [])
     fixtures = Counter(m for r in rows if r["failure_class"] == "missing_fixture" for m in r.get("missing_modules") or [])
     fastapi_inline_or_dirty = sum(1 for r in rows if r.get("repo") == "fastapi/fastapi" and r["failure_class"] == "missing_module"
                                   and {"inline_snapshot", "dirty_equals"} & set(r.get("missing_modules") or []))
-    return {"checked": len(rows), "gold_resolved": sum(r["gold_resolved"] for r in rows), "by_repo": by_repo,
+    return {"checked": len(rows), "gold_resolved": sum(r["gold_resolved"] for r in rows),
+            "baseline_resolved_without_patch": sum(1 for r in rows if r.get("baseline_resolved")),
+            "valid": sum(1 for r in rows if r.get("valid")), "by_repo": by_repo,
             "failure_classes": dict(Counter(r["failure_class"] for r in rows)), "missing_modules": dict(mods),
             "missing_fixtures": dict(fixtures),
             "fastapi_failing_on_inline_snapshot_or_dirty_equals": fastapi_inline_or_dirty}
 
 
 def select_from_gold_check(gold_all: dict[str, dict], check_rows: list[dict[str, Any]], seed: int = 20261031) -> dict[str, Any]:
-    """Pre-registered order: per repo, eligible tasks whose gold passes HERE, seeded shuffle.
+    """Pre-registered order: per repo, eligible VALID tasks (gold passes and no-patch fails HERE), seeded shuffle.
     smoke3 = first of each repo. IDs only."""
     import random
     from pilot_c.select_tasks import QUOTA, eligible
-    ok = {r["instance_id"] for r in check_rows if r["gold_resolved"]}
+    ok = {r["instance_id"] for r in check_rows if r.get("valid", r["gold_resolved"])}
     rng = random.Random(seed)
     order: dict[str, list[str]] = {}
     for repo in QUOTA:
         pool = sorted(i for i, g in gold_all.items() if g["repo"] == repo and eligible(g) and i in ok)
         rng.shuffle(pool)
         order[repo] = pool
-    return {"seed": seed, "eligible_gold_pass_in_order": order, "smoke3": [v[0] for v in order.values() if v],
-            "gold_pass_all": sorted(ok)}
+    smoke = [v[0] for v in order.values() if v]
+    # fill rule (pre-registered): if a repo has no valid task, take the next valid tasks round-robin
+    # from the other repos' orders, so the timing set always has 3 tasks when 3 exist
+    k = 1
+    while len(smoke) < 3 and any(len(v) > k for v in order.values()):
+        for v in order.values():
+            if len(v) > k and len(smoke) < 3:
+                smoke.append(v[k])
+        k += 1
+    return {"seed": seed, "eligible_valid_in_order": order, "smoke3": smoke, "valid_all": sorted(ok)}
 
 
 def find_input_json(name: str) -> Path:

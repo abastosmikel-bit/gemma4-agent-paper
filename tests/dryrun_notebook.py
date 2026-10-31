@@ -1,4 +1,6 @@
-"""LOCAL-ONLY dry run of a generated Kaggle notebook against a fake /kaggle tree.
+"""SUPERSEDED by tests/papermill_dryrun.sh (real Jupyter runtime). Kept for reference.
+
+LOCAL-ONLY dry run of a generated Kaggle notebook against a fake /kaggle tree.
 
 Executes every code cell in-process (handling %%writefile), after:
   - /kaggle/input/... symlinked to a local mirror of the competition data + harness wheels

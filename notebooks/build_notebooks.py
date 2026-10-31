@@ -120,7 +120,8 @@ order = first + [i for i in all_ids if i not in first]
 print(len(first), 'eligible tasks first, then the rest')
 OUT = Path('/kaggle/working/pilot_c_gold_check_kaggle.json')
 res = kr.gold_check(order, OUT)
-print('gold resolves:', sum(r['gold_resolved'] for r in res['rows']), '/', len(res['rows']))
+print('gold resolves:', sum(r['gold_resolved'] for r in res['rows']), '/', len(res['rows']),
+      '| valid (gold passes AND no-patch fails):', sum(bool(r.get('valid')) for r in res['rows']))
 print(json.dumps(res['summary'], indent=1))
 # pre-registered selection for notebook 01 (smoke3) and later runs, from THIS environment's gold check
 final = json.loads(OUT.read_text())
@@ -136,7 +137,9 @@ PRECHECK_00 = """
 import sys, json
 sys.path.insert(0, '/kaggle/working/pilot')
 from pilot_c import kaggle_runner as kr
-print('notebook 00 output found:', kr.find_input_json('pilot_c_gold_check_kaggle.json'))   # fails fast if not attached
+_gc = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # fails fast if not attached
+assert len(_gc['selection']['smoke3']) == 3, f"notebook 00 found fewer than 3 valid tasks: {_gc['selection']['smoke3']}"
+print('notebook 00 output OK; smoke tasks:', _gc['selection']['smoke3'], '| valid tasks:', _gc['summary']['valid'])
 """
 
 
@@ -195,7 +198,7 @@ Accelerator: **GPU L4 x4**. Inputs: competition, wheelhouse dataset, Gemma 4 e4b
 # then take the first `quota` per repo (fastapi 7, rich 6, requests 2).
 cands, quota = IDS['candidates_in_order'], IDS['quota']
 gcheck = kr.gold_check([i for v in cands.values() for i in v], Path('/kaggle/working/pilot_c_pilot_goldcheck.json'))
-ok = {r['instance_id'] for r in gcheck['rows'] if r['gold_resolved']}
+ok = {r['instance_id'] for r in gcheck['rows'] if r.get('valid')}
 TASKS = [i for repo, k in quota.items() for i in [x for x in cands[repo] if x in ok][:k]]
 print(len(TASKS), 'pilot tasks:', TASKS)
 if len(TASKS) < 15:

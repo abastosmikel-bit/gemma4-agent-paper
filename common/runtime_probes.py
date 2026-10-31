@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import contextvars
 import json
+import os
 import time
 from collections import Counter
 from typing import Any
@@ -30,6 +31,7 @@ REQUESTS: list[dict[str, Any]] = []
 COMPACTIONS: list[dict[str, Any]] = []
 MARKERS: dict[str, list[str]] = {}
 TASK_PROMPT_MARKER = "Problem Statement:"
+AGENT_REQUEST_TIMEOUT_S = 900
 SKILL_RESPONSE_TOOLS = {"load_skill", "load_skill_resource"}
 _installed = False
 
@@ -120,6 +122,13 @@ def install() -> None:
     from google.adk.models import lite_llm
     from swegemma import evaluate as sg_eval
 
+    import litellm
+    from common.server_watchdog import tracked
+
+    # per-request timeout for agent requests (LiteLLM's default is 6000 s). 900 s = the per-task time budget:
+    # a single request longer than the whole task budget is useless anyway.
+    timeout_s = float(os.environ.get("PILOT_AGENT_REQUEST_TIMEOUT", AGENT_REQUEST_TIMEOUT_S))
+    litellm.request_timeout = timeout_s
     orig_ac = lite_llm.LiteLLMClient.acompletion
 
     async def acompletion(self, model, messages, tools, **kwargs):
@@ -127,7 +136,9 @@ def install() -> None:
             REQUESTS.append(request_shape(messages, tools))
         except Exception:  # noqa: BLE001 - instrumentation must never break a run
             pass
-        return await orig_ac(self, model, messages, tools, **kwargs)
+        kwargs.setdefault("timeout", timeout_s)
+        with tracked():  # counts in-flight requests for the watchdog; fails fast after a freeze
+            return await orig_ac(self, model, messages, tools, **kwargs)
 
     orig_sum = les.LlmEventSummarizer.maybe_summarize_events
 
@@ -142,6 +153,9 @@ def install() -> None:
     orig_eval = sg_eval.Evaluator.evaluate_task
 
     async def evaluate_task(self, *args, **kwargs):
+        from common.server_watchdog import ServerFrozen, STATE, TRIPPED
+        if TRIPPED.is_set():  # server frozen: do not even set up the task's sandbox
+            raise ServerFrozen(f"inference server frozen ({STATE['reason']}); task skipped")
         task = kwargs.get("task", args[0] if args else None)
         tok = CURRENT_TASK.set(getattr(task, "instance_id", None))
         try:

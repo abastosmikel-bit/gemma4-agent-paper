@@ -54,6 +54,35 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # silence
         pass
 
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except ConnectionAbortedError:
+            self.close_connection = True
+
+    # --- freeze simulation (MOCK_FREEZE_AFTER=N): after N POSTs the server hangs on every request,
+    # including GET /health, like a vLLM API server whose event loop is stuck in the tool parser.
+    frozen = threading.Event()
+    stopped = threading.Event()
+    posts = 0
+    conns: set = set()
+
+    def setup(self):
+        super().setup()
+        _Handler.conns.add(self.connection)
+
+    def _maybe_freeze(self, is_post: bool) -> None:
+        if is_post:
+            with _Handler.lock:
+                _Handler.posts += 1
+                n = int(os.environ.get("MOCK_FREEZE_AFTER", "0") or 0)
+                if n and _Handler.posts > n:
+                    _Handler.frozen.set()
+        if _Handler.frozen.is_set():
+            _Handler.stopped.wait()  # hang until the server is killed ...
+            self.close_connection = True
+            raise ConnectionAbortedError("mock server killed")  # ... then drop the request unanswered, like a dead process
+
     def _send(self, obj: dict) -> None:
         body = json.dumps(obj).encode()
         self.send_response(200)
@@ -62,7 +91,13 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self):  # /v1/models
+    def do_GET(self):  # /v1/models and /health
+        self._maybe_freeze(False)
+        if self.path.rstrip("/").endswith("/health"):
+            self.send_response(200)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         self._send({"object": "list", "data": [{"id": "mock", "object": "model"}]})
 
     def _conv_id(self, msgs: list[dict]) -> str:
@@ -85,6 +120,7 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
         req = json.loads(self.rfile.read(n) or b"{}")
+        self._maybe_freeze(True)
         if self.path.rstrip("/").endswith("/tokenize"):  # vLLM /tokenize (chat form)
             text = self._render(req.get("messages", []), bool(req.get("add_generation_prompt")))
             toks = [ord(c) for c in text]
@@ -159,10 +195,32 @@ class _Handler(BaseHTTPRequestHandler):
                     "choices": [{"index": i, "message": message, "finish_reason": finish} for i in range(k)], "usage": usage})
 
 
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+    block_on_close = False
+
+
 def serve(script: list[dict], port: int = 8001) -> ThreadingHTTPServer:
     _Handler.script = script
     _Handler.log = []
     _Handler.steps = {}
-    srv = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
+    _Handler.posts = 0
+    _Handler.frozen = threading.Event()
+    _Handler.stopped = threading.Event()
+    _Handler.conns = set()
+    srv = _Server(("127.0.0.1", port), _Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv
+
+
+def kill(srv: ThreadingHTTPServer) -> None:
+    """Like killing the vLLM process: stop accepting, release hung handlers, drop every client connection."""
+    import socket
+    _Handler.stopped.set()
+    srv.shutdown()
+    for c in list(_Handler.conns):
+        try:
+            c.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+    srv.server_close()

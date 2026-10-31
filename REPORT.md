@@ -378,8 +378,44 @@ Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermi
   - C00 and C03v: Python 3.12.3, real install of 5 wheels.
   - C01 and C03: Python 3.12.3, real install of all 41 wheels.
   - All passed under papermill.
+  - **Correction (later the same day):** that C01/C03 pass was vacuous. In the 3.12 venv every LLM call failed on a
+    local `mcp`/`litellm` mismatch, so C01 made 0 tool calls and C03 captured 0 contexts, and the notebooks still
+    finished. The venv is fixed, and the dry run now asserts content: tool calls > 0 and no errored tasks for C01;
+    captures, scored cells and samples for C03; verified rows for C03v.
 - **Limit of the dry run:** the packages that the Kaggle image itself provides (litellm, pydantic, torch, …) come from
   PyPI in the local venv, not from the image, so library-version differences inside the image are still not covered.
 - **Not verified:** that Kaggle's Copy & Edit + Import Notebook keeps the pin, and the menu labels. These come from
   how Kaggle documents and shows these settings; I can't open the UI from here. The first code cell catches any
   mistake within seconds.
+
+## 13. Freeze protection for GPU notebooks (2026-10-31)
+
+- **Before this change:**
+  - `notebooks/C01_smoke_timing__L4x4.ipynb` had no request timeout of its own. LiteLLM's default is 6,000 s, and the
+    harness retries timeouts up to 5 times.
+  - `notebooks/C03_probe__L4x4.ipynb` had only long timeouts (600–1,800 s).
+  - Neither had a watchdog, and their time guards ran only between runs.
+  - A frozen server would have burned L4x4 time until Kaggle's session limit.
+- **The bug is real in vLLM 0.19.1** (reproduced offline). The gemma4 tool parser loops forever on an array nested
+  in an array whose string contains `[` or `]`. Flat lists, which is what our only array tool `get_code_subgraph`
+  takes, are fine. Details are in `LEARNINGS.md` on `paper/main`.
+- **Now** (`common/server_watchdog.py`):
+  - **Per-request timeouts:** 900 s for agent requests (= per-task budget); probe: 60 s tokenize, 180 s scoring,
+    300 s words, 900 s sampling.
+  - **Watchdog:** a thread polls `/health` every 30 s. After 3 failures (~90 s), or when requests are in flight but
+    none finished for 20 min, it kills the server. Pending and new requests then fail at once with a non-retryable
+    error, and tasks not yet started are skipped.
+  - **Restart, then stop:** the next condition (C01) or size (C03) gets a restarted server, and the session stops
+    after the second freeze. C01 also stops if every task of a run fails without a tool call.
+  - The builder refuses to emit any GPU notebook without the watchdog, so the future 12b validation gets it too.
+- **Verified** (papermill under Python 3.12, real 41-wheel install, mock server that hangs on every request including
+  `/health`):
+  - Standalone: an in-flight request ends ~4 s after the freeze (dry-run settings) and the next one fails in 0.000 s
+    with `ServerFrozen`.
+  - `notebooks/C01_smoke_timing__L4x4.ipynb` freeze test: 2 freezes, 1 restart, then stop; 3 models skipped;
+    107 s in total.
+  - `notebooks/C03_probe__L4x4.ipynb` freeze test: 2 freezes, then stop; 12b and e2b skipped, nothing scored for
+    them; 103 s.
+  - Normal runs with content checks: C01 has 9 tool calls per task and 0 errors in all 5 runs; C03 captured 4/4
+    tasks, 456 depth-1 and 404 depth-2 cells; C03v has 308 verified samples.
+  - With the production settings (30 s × 3 health checks), detection takes about 90 s.

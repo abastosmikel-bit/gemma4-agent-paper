@@ -23,6 +23,7 @@ from typing import Any
 
 from pilot_c import kaggle_runner as kr
 from pilot_c import probe as pb
+from common.server_watchdog import ServerFrozen, TRIPPED, tracked
 from pilot_c.capture_server import CaptureServer, needle_for
 
 AGENT_SAMPLING = {"temperature": 0.2, "top_p": 0.95, "max_tokens": 6144,
@@ -36,10 +37,15 @@ MAX_CELL_TOKENS = 28000
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # local server: never via a proxy
 
 
-def _post(url: str, body: dict, timeout: int = 600) -> dict:
+# per-request timeouts (s): a 28k-token prefill takes ~10 s on 31b; sampling is <= 6,144 new tokens
+TIMEOUT_TOKENIZE, TIMEOUT_SCORE, TIMEOUT_SAMPLE, TIMEOUT_WORDS = 60, 180, 900, 300
+
+
+def _post(url: str, body: dict, timeout: int = TIMEOUT_SCORE) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
-    with _OPENER.open(req, timeout=timeout) as r:
-        return json.loads(r.read())
+    with tracked():  # counted by the watchdog; fails fast once the server is declared frozen
+        with _OPENER.open(req, timeout=timeout) as r:
+            return json.loads(r.read())
 
 
 def _get(url: str) -> dict:
@@ -255,14 +261,15 @@ def build_messages(rec: dict, ctx: dict, state: str, cond: str) -> tuple[list[di
 
 def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> dict:
     body = {"model": model, "messages": msgs, "tools": tools, "add_generation_prompt": True, **SCORE_KW}
-    pre = _post(f"{root}/tokenize", body)["tokens"]
-    full = _post(f"{root}/tokenize", {**body, "messages": msgs + [target], "add_generation_prompt": False})["tokens"]
+    pre = _post(f"{root}/tokenize", body, TIMEOUT_TOKENIZE)["tokens"]
+    full = _post(f"{root}/tokenize", {**body, "messages": msgs + [target], "add_generation_prompt": False},
+                 TIMEOUT_TOKENIZE)["tokens"]
     if full[:len(pre)] != pre or len(full) <= len(pre):
         return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(pre)}
     if len(full) > MAX_CELL_TOKENS:  # PLAN §9 rule 4
         return {"ok": False, "why": "too-long", "n_ctx": len(pre)}
     r = _post(f"{root}/v1/completions", {"model": model, "prompt": full, "max_tokens": 1, "temperature": 0,
-                                         "prompt_logprobs": 0})
+                                         "prompt_logprobs": 0}, TIMEOUT_SCORE)
     pl = r["choices"][0].get("prompt_logprobs")
     if not pl or len(pl) != len(full):
         return {"ok": False, "why": "no-prompt-logprobs", "n_ctx": len(pre)}
@@ -279,7 +286,7 @@ def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> 
 
 def sample(root: str, model: str, msgs: list[dict], tools: Any, n: int, seed: int) -> list[dict]:
     r = _post(f"{root}/v1/chat/completions", {"model": model, "messages": msgs, "tools": tools, "n": n, "seed": seed,
-                                               **AGENT_SAMPLING}, timeout=1800)
+                                               **AGENT_SAMPLING}, TIMEOUT_SAMPLE)
     out = []
     for ch in r.get("choices", []):
         m = ch.get("message") or {}
@@ -295,7 +302,7 @@ def write_words(root: str, model: str, recs: list[dict]) -> dict[str, str]:
         for strict in (False, True):
             r = _post(f"{root}/v1/chat/completions", {"model": model, "temperature": 0, "max_tokens": 300,
                       "messages": [{"role": "user", "content": pb.words_prompt(rec["diff"], strict)}],
-                      "chat_template_kwargs": {"enable_thinking": False}})
+                      "chat_template_kwargs": {"enable_thinking": False}}, TIMEOUT_WORDS)
             w = ((r["choices"][0].get("message") or {}).get("content") or "").strip()
             if w and not pb.words_leak(w, rec["diff"]):
                 rec["words"] = w
@@ -319,6 +326,8 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
     size = kr.SHORT[model_alias]
     out: dict[str, Any] = {"size": size, "d1": [], "d2": [], "words_status": None, "skipped": [], "selfcheck": None}
     usable = [r for r in recs if r["instance_id"] in ctxs]
+    if not usable:
+        raise RuntimeError("SELFCHECK failed: no captured agent contexts (the capture phase produced nothing)")
     # self-check on one cell before spending time
     r0 = usable[0]
     m = build_messages(r0, ctxs[r0["instance_id"]], "use", "L0")
@@ -332,6 +341,9 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
     t0 = time.time()
 
     def d1_job(rec, st, cond, rep):
+        if TRIPPED.is_set() or time.time() > deadline:
+            return {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, "ok": False,
+                    "why": "server_frozen" if TRIPPED.is_set() else "time_guard"}
         mm = build_messages(rec, ctxs[rec["instance_id"]], st, cond)
         if mm is None:
             return {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, "ok": False, "why": "unavailable"}
@@ -345,15 +357,22 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
             try:
                 out["d1"].append(f.result())
             except Exception as e:  # noqa: BLE001
-                out["d1"].append({"size": size, "ok": False, "why": f"{type(e).__name__}: {str(e)[:120]}"})
+                why = "server_frozen" if isinstance(e, ServerFrozen) or TRIPPED.is_set() else f"{type(e).__name__}: {str(e)[:120]}"
+                out["d1"].append({"size": size, "ok": False, "why": why})
     out["d1_minutes"] = round((time.time() - t0) / 60, 2)
     samples_private: list[dict] = []
+    if TRIPPED.is_set():
+        out["skipped"].append("depth2 (server frozen)")
+        return out
     if time.time() > deadline:
         out["skipped"].append("depth2 (time guard)")
         return out
     t1 = time.time()
 
     def d2_job(rec, st, cond, n):
+        if TRIPPED.is_set() or time.time() > deadline:
+            return [], [{"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "ok": False,
+                         "why": "server_frozen" if TRIPPED.is_set() else "time_guard"}]
         mm = build_messages(rec, ctxs[rec["instance_id"]], st, cond)
         if mm is None:
             return [], [{"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "ok": False, "why": "unavailable"}]
@@ -380,7 +399,8 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
                 out["d2"] += rows
                 samples_private += priv
             except Exception as e:  # noqa: BLE001
-                out["d2"].append({"size": size, "ok": False, "why": f"{type(e).__name__}: {str(e)[:120]}"})
+                why = "server_frozen" if isinstance(e, ServerFrozen) or TRIPPED.is_set() else f"{type(e).__name__}: {str(e)[:120]}"
+                out["d2"].append({"size": size, "ok": False, "why": why})
     out["d2_minutes"] = round((time.time() - t1) / 60, 2)
     kr.PRIVATE.mkdir(parents=True, exist_ok=True)
     with open(kr.PRIVATE / f"probe_samples_{size}.jsonl", "w") as f:

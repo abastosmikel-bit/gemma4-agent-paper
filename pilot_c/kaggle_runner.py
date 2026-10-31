@@ -298,7 +298,7 @@ def _start_mock_server(agent_dir: Path):
     from google.adk.models.lite_llm import LiteLlm
     from swegemma.config import ALLOWED_ADAPTER_EXTENSIONS
     sys.path.insert(0, os.environ["PILOT_REPO"])
-    from tests.mock_openai_server import make_script, serve
+    from tests.mock_openai_server import kill, make_script, serve
 
     litellm.drop_params = True
     install_litellm_reasoning_patch()
@@ -312,9 +312,22 @@ def _start_mock_server(agent_dir: Path):
         base_url = f"http://127.0.0.1:{srv.server_address[1]}/v1"
 
         def stop(self):
-            srv.shutdown()
-            srv.server_close()
+            kill(srv)
     return _S(), reg, ad, 0.0
+
+
+def server_root(server) -> str:
+    """http://host:port of a started server (VllmServer.base_url or the dry-run mock's), without /v1."""
+    base = str(getattr(server, "base_url", None) or "http://127.0.0.1:8000").rstrip("/")
+    return base[:-3] if base.endswith("/v1") else base
+
+
+def safe_stop(server) -> None:
+    """Stop a server that may already have been killed by the watchdog."""
+    try:
+        server.stop()
+    except Exception as e:  # noqa: BLE001
+        print(f"server.stop(): {type(e).__name__}: {e}")
 
 
 # --------------------------------------------------------------------------- evaluation

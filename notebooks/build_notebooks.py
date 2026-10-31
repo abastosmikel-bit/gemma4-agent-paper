@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ["common/__init__.py", "common/diffs.py", "common/locate.py", "common/tasks.py", "common/trace.py",
-              "common/metrics.py", "common/runtime_probes.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json",
+              "common/metrics.py", "common/runtime_probes.py", "common/server_watchdog.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json",
               "pilot_c/probe.py", "pilot_c/capture_server.py", "pilot_c/probe_runner.py"]
 
 
@@ -23,6 +23,10 @@ GEMMA = ("models `google/gemma-4` → Other → `gemma-4-e2b-it-qat-w4a16-ct`, `
          "`gemma-4-12b-it-qat-w4a16-ct`, `gemma-4-31b-it-qat-w4a16-ct` (version 2)")
 L4_NOTE = "The **GPU L4 x4** option only appears after the competition `gemma-4-developer-agent` is attached as an input."
 STARTER = "https://www.kaggle.com/code/ryanholbrook/getting-started-gemma-4-developer-agent"
+FREEZE_NOTE = ("**Freeze protection:** every request to the inference server has a timeout, and a watchdog polls its "
+               "`/health`. If the server stops responding (~90 s), the watchdog kills it, the next unit of work gets a "
+               "fresh server, and the session stops after a second freeze. Freezes are listed under `freezes` in the "
+               "output file.")
 ENV_NOTE = ("These notebooks must run in the **official starter's pinned Kaggle environment (Python 3.12)**. New Kaggle "
             "notebooks default to Python 3.13, and pip then rejects the wheelhouse's cp312 wheels.")
 
@@ -112,6 +116,7 @@ def first_cell(key: str) -> dict:
              "Leave `/kaggle/working/private/` on Kaggle (competition-derived)."]
     if sp["accelerator"].startswith("GPU"):
         lines.append(f"- {L4_NOTE}")
+        lines.append(f"- {FREEZE_NOTE}")
     lines += ["", f"**How to run it in the right environment.** {ENV_NOTE}", ""] + env_steps(sp)
     return md("\n".join(lines))
 
@@ -129,6 +134,7 @@ def readme() -> str:
               .replace("Accelerator = **None**", "Accelerator = as in the table").replace("No earlier notebook output is needed.", "Attach the earlier notebook's output listed in the table (Add input → Your Work → Notebooks).")
               .replace("The Gemma 4 models that came with the copy are not needed (you can remove them).", "CPU notebooks don't need the Gemma 4 models that came with the copy (you can remove them).")
               for l in env_steps(SPECS["C00"])], "",
+            f"> {FREEZE_NOTE.replace('**Freeze protection:**', '**Freeze protection (GPU notebooks):**')}", "",
             "CPU notebooks (`C00`, `C03v`) install only the 5 wheelhouse wheels they need: `swegemma`, `adk_eval_core`, "
             "`adk_submission`, `google_adk`, `google_genai` (all pure Python). GPU notebooks install the starter's full set "
             "of 41.", "",
@@ -190,32 +196,59 @@ print(kr.env_info())
 """
 
 GPU_LOOP = """
-# ---- the experiment loop: one vLLM server per model, conditions run as separate Evaluator batches
+# ---- the experiment loop: one vLLM server per model, conditions run as separate Evaluator batches.
+# Freeze protection (common/server_watchdog.py): per-request timeouts + a /health watchdog that kills a frozen
+# server; the next condition gets a restarted server; the session stops after the second freeze.
+from common import server_watchdog as wd
 summary = {{"pilot": "C", "notebook": "notebooks/{nbfile}", "env": kr.env_info(), "budget": BUDGET, "task_ids": TASKS,
-           "plan": PLAN, "concurrency": CONCURRENCY, "servers": [], "runs": [], "skipped": []}}
+           "plan": PLAN, "concurrency": CONCURRENCY, "servers": [], "runs": [], "skipped": [], "freezes": [],
+           "restarts": 0, "stopped": None}}
 out = Path('/kaggle/working/{out}')
 assert TASKS, 'no tasks selected - stopping before any GPU work'
 gold = kr.build_gold(TASKS)
-for model, conds in PLAN:
-    if (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
-        summary["skipped"].append({{"model": model, "reason": "session time guard"}}); continue
+MAX_FREEZES = 2
+
+def start_watched(model):
+    wd.reset()
     agent_dir = kr.prepare_agent_dir(model, BUDGET)
-    summary["agent"] = kr.describe_agent(agent_dir)
     server, models, adapters, startup = kr.start_server(agent_dir)
+    dog = wd.Watchdog(kr.server_root(server), server.stop)
+    dog.start()
     summary["servers"].append({{"model": model, "startup_s": round(startup, 1)}})
+    return agent_dir, server, models, adapters, dog
+
+for model, conds in PLAN:
+    if summary["stopped"] or (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
+        summary["skipped"].append({{"model": model, "reason": summary["stopped"] or "session time guard"}}); continue
+    agent_dir, server, models, adapters, dog = start_watched(model)
+    summary["agent"] = kr.describe_agent(agent_dir)
     try:
         for cond, rep in conds:
-            if (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
-                summary["skipped"].append({{"model": model, "condition": cond, "replicate": rep, "reason": "session time guard"}}); continue
+            if summary["stopped"] or (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
+                summary["skipped"].append({{"model": model, "condition": cond, "replicate": rep,
+                                           "reason": summary["stopped"] or "session time guard"}}); continue
+            if wd.TRIPPED.is_set():   # the previous condition froze the server: restart it for this one
+                dog.stop(); kr.safe_stop(server)
+                agent_dir, server, models, adapters, dog = start_watched(model)
+                summary["restarts"] += 1
             run = kr.run_condition(agent_dir, models, adapters, TASKS, gold, cond, rep, CONCURRENCY)
+            if wd.TRIPPED.is_set():
+                run["server_frozen"] = True
+                summary["freezes"].append({{"model": model, "condition": cond, "replicate": rep, **wd.state()}})
+                if len(summary["freezes"]) >= MAX_FREEZES:
+                    summary["stopped"] = "second inference-server freeze"
             summary["runs"].append(run)
+            agg = run["aggregate"]
+            if not wd.TRIPPED.is_set() and agg["n_tasks"] and agg["errors"] == agg["n_tasks"] and not agg["tool_calls_mean"]:
+                summary["stopped"] = "every task failed without a single tool call (agent cannot reach the model)"
             summary["session_elapsed_h"] = round((time.time() - SESSION_T0) / 3600, 3)
             kr.save_summary(out, summary)
     finally:
-        server.stop()
+        dog.stop(); kr.safe_stop(server)
 summary["session_elapsed_h"] = round((time.time() - SESSION_T0) / 3600, 3)
 kr.save_summary(out, summary)
-print('L4x4 hours used by this session (wall clock):', summary["session_elapsed_h"])
+print('L4x4 hours used by this session (wall clock):', summary["session_elapsed_h"], '| freezes:', len(summary["freezes"]),
+      '| stopped:', summary["stopped"])
 """
 
 RESULTS_NOTE = """
@@ -342,24 +375,38 @@ with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:
 (kr.PRIVATE / 'probe_contexts.json').write_text(json.dumps(ctxs))
 save()
 
-# 4: one vLLM server per size (starter-identical); 31b first because it writes the words rung
+# 4: one vLLM server per size (starter-identical); 31b first because it writes the words rung.
+# Freeze protection (common/server_watchdog.py): per-request timeouts + a /health watchdog that kills a frozen
+# server; the next size starts a fresh server; the session stops after the second freeze.
+from common import server_watchdog as wd
 deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
+summary['freezes'], summary['stopped'] = [], None
+MAX_FREEZES = 2
 for model in SIZES:
-    if time.time() > deadline - 600:
-        summary['sizes'].append({'model': model, 'skipped': 'session time guard'}); continue
+    if summary['stopped'] or time.time() > deadline - 600:
+        summary['sizes'].append({'model': model, 'skipped': summary['stopped'] or 'session time guard'}); continue
+    wd.reset()
     agent_dir = kr.prepare_agent_dir(model, BUDGET)
     server, models, adapters, startup = kr.start_server(agent_dir)
+    dog = wd.Watchdog(kr.server_root(server), server.stop)
+    dog.start()
     try:
         res = pr.run_size(server, model, recs, ctxs, deadline, WORKERS, write_words_here=(model.startswith('gemma-4-31b')))
     except Exception as e:
         res = {'size': kr.SHORT[model], 'error': f'{type(e).__name__}: {str(e)[:300]}', 'd1': [], 'd2': []}
     finally:
-        server.stop()
+        dog.stop(); kr.safe_stop(server)
+    if wd.TRIPPED.is_set():
+        res['server_frozen'] = True
+        summary['freezes'].append({'model': model, **wd.state()})
+        if len(summary['freezes']) >= MAX_FREEZES:
+            summary['stopped'] = 'second inference-server freeze'
     summary['d1'] += res.pop('d1'); summary['d2'] += res.pop('d2')
     summary['sizes'].append({'model': model, 'startup_s': round(startup, 1), **res})
     save()
-    if 'SELFCHECK' in str(res.get('error', '')) and len(summary['sizes']) == 1:
+    if 'SELFCHECK' in str(res.get('error', '')) and len(summary['sizes']) == 1 and not wd.TRIPPED.is_set():
         print('API self-check failed on the first size: stopping to save GPU quota'); break
+save()   # also records sizes skipped after a stop
 with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:   # again, now with words and cross-task controls
     for r in recs: f.write(json.dumps(pb.public_record(r)) + '\\n')
 print(json.dumps({k: v for k, v in summary['summary'].items() if '/use/' in k and 'depth2' not in k}, indent=0)[:3000])
@@ -408,6 +455,9 @@ def main() -> None:
     out = ROOT / "notebooks"
     for build in (gold_check_nb, smoke_nb, probe_nb, probe_verify_nb):
         nb, fname = build()
+        src = "".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%"))
+        if "__L4x4" in fname or "__T4x2" in fname:
+            assert "wd.Watchdog(" in src and "server_watchdog" in src, f"{fname}: GPU notebooks must run the server watchdog"
         (out / fname).write_text(json.dumps(nb, indent=1), encoding="utf-8")
         print("wrote", out / fname)
     (out / "README.md").write_text(readme(), encoding="utf-8")

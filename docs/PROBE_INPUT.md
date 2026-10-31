@@ -1,6 +1,7 @@
 # Probe input — what pilot C's information-ladder probe needs per task
 
-Owner: pilot C (`pilot/c-bottleneck`). Consumer of held-out tasks from pilot D. Version 1, 2026-10-31.
+Owner: pilot C (`pilot/c-bottleneck`). Consumer of held-out tasks from pilot D. Version 2, 2026-10-31
+(v2: `test.source` rule changed, pure-deletion anchor; see PLAN §11 on `pilot/c-bottleneck`).
 Code that reads this: `pilot_c/probe.py` (`build_probe_record`) on branch `pilot/c-bottleneck`.
 
 There are two levels. **Level A is what pilot D should export.** Level B is derived from Level A by
@@ -69,12 +70,24 @@ Rules:
 - **Canonical edit:**
   - Take the gold hunks inside the gold function's span.
   - `old_string` = base lines from the first to the last changed old line, inclusive.
-  - For a pure insertion, add the preceding line as an anchor in both strings.
+  - For a pure insertion, add the preceding line as an anchor in both strings; for a pure deletion
+    (empty `new_string`), add one neighbouring line to both.
   - Extend by one surrounding line at a time until `old_string` occurs exactly once in the base file.
   - `new_string` = the corresponding new lines.
   - Argument order is `filepath, old_string, new_string`.
-- `test.source` = the required test functions' added lines from `test_patch`, ≤ 60 lines.
+- `test.source` = `test_patch` as it reads after applying it: per file a `# <path>` line, then per hunk the
+  context + added lines (no removed lines), hunks separated by `# ...`, ≤ 60 lines in total.
 - `graph` = the induced subgraph on the gold symbol + up to 10 non-test neighbours, from the harness's own
   `get_code_neighbors` / `get_code_subgraph`.
 - `wrong` = matched-length controls (see PLAN): another file of similar path length in the same repo, another
   function in the same file with a similar dotted-name length, and another task's test/words of similar length.
+
+## What the probe adds at run time (no need to export)
+
+- `graph` is computed on Kaggle with the harness's own graph tools (needs `graphs/` from Level A).
+- `words` is written by 31b in the session.
+- The agent contexts (system prompt, tool schema, task prompt with workspace layout, read_file turn) are captured by
+  running the real swegemma agent loop against a capture server. So pilot D's tasks must run in the harness
+  (Level A + `sandbox/setup.py` compatible).
+- Checks you can run yourself: notebook 00 (validity), then a probe dry run with
+  `tests/papermill_dryrun.sh <your_layout_dir> <venv> <out> 00 probe` on `pilot/c-bottleneck`.

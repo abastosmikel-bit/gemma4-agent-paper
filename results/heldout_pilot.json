@@ -1,0 +1,866 @@
+{
+ "aggregate": {
+  "tasks_built": 26,
+  "valid_subprocess": 22,
+  "valid_docker": 22,
+  "backend_verdict_agreement": 26,
+  "by_repo": {
+   "networkx/networkx": {
+    "built": 12,
+    "valid": 8
+   },
+   "tobymao/sqlglot": {
+    "built": 14,
+    "valid": 14
+   }
+  },
+  "repro_verified_of_valid": 21,
+  "all_gold_nodes_in_graph_of_valid": 19,
+  "single_function_fixes_of_valid": 14,
+  "ai_authored_marker_of_valid": 2,
+  "issue_linked_of_valid": 18,
+  "median_f2p_of_valid": 1.0,
+  "median_p2p_of_valid": 30.5,
+  "median_build_seconds": 8.9,
+  "median_validate_seconds_subprocess": 10.4,
+  "median_validate_seconds_docker": 60.0,
+  "committed_at_range": [
+   "2026-05-04T13:16:35+03:00",
+   "2026-10-20T14:22:39+03:00"
+  ],
+  "funnels": {
+   "networkx": {
+    "commits_since": 149,
+    "single_parent": 148,
+    "fix_message": 26,
+    "has_test_and_code_change": 22,
+    "has_py_test_file": 22,
+    "pkg_python_only": 22,
+    "no_protected_config_in_code": 22,
+    "size_ok": 21,
+    "with_issue_ref_in_message": 0,
+    "ai_authored_marker": 1,
+    "with_issue_ref_in_tests": 9,
+    "with_any_issue_ref": 9
+   },
+   "sqlglot": {
+    "commits_since": 1123,
+    "single_parent": 1123,
+    "fix_message": 534,
+    "has_test_and_code_change": 472,
+    "has_py_test_file": 401,
+    "pkg_python_only": 400,
+    "no_protected_config_in_code": 400,
+    "size_ok": 345,
+    "with_issue_ref_in_message": 49,
+    "ai_authored_marker": 85,
+    "with_issue_ref_in_tests": 2,
+    "with_any_issue_ref": 50
+   }
+  }
+ },
+ "tasks": [
+  {
+   "instance_id": "sqlglot_17432c6117",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "17432c61175194ee0f56f0703393e8c5fdc9e81f",
+   "pr_number": null,
+   "issue_refs": [
+    7953
+   ],
+   "committed_at": "2026-05-04T13:16:35+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 4,
+   "history_commits": 339,
+   "snapshot_mb": 36.1,
+   "build_seconds": 7.8,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.7,
+   "validate_seconds_docker": 66.2,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 27,
+   "gold_nodes": [
+    "sqlglot.generator.Generator.identifier_sql"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_7640",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "63296846f6a7a683af21683acb24aad7a63bb3f5",
+   "pr_number": 7640,
+   "issue_refs": [
+    7438
+   ],
+   "committed_at": "2026-05-12T20:14:29+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 22,
+   "history_commits": 400,
+   "snapshot_mb": 38.5,
+   "build_seconds": 10.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 68.5,
+   "validate_seconds_docker": 138.3,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 65,
+   "gold_nodes": [
+    "sqlglot.parser.Parser",
+    "sqlglot.parser.Parser._parse_alias"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 1,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_7809",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "cf7e4bf4a57d331e4a6e5f4933cb7daf0e503c3b",
+   "pr_number": 7809,
+   "issue_refs": [
+    7806
+   ],
+   "committed_at": "2026-06-30T14:43:10+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 46,
+   "history_commits": 583,
+   "snapshot_mb": 48.0,
+   "build_seconds": 14.7,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.3,
+   "validate_seconds_docker": 68.1,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 10,
+   "gold_nodes": [
+    "sqlglot.parser.Parser._parse_range"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_169b8364b6",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "169b8364b643c4285dcf073aa2f357c5b40831a6",
+   "pr_number": null,
+   "issue_refs": [
+    7916
+   ],
+   "committed_at": "2026-07-20T22:03:24+03:00",
+   "ai_authored_marker": false,
+   "code_files": 3,
+   "code_lines_changed": 14,
+   "history_commits": 688,
+   "snapshot_mb": 51.6,
+   "build_seconds": 16.7,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.4,
+   "validate_seconds_docker": 61.1,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 43,
+   "gold_nodes": [
+    "sqlglot.generator.Generator",
+    "sqlglot.generator.Generator.table_sql",
+    "sqlglot.generators.duckdb.DuckDBGenerator",
+    "sqlglot.parser.Parser._parse_table"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_df5ec1ecd4",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "df5ec1ecd43b83ac63800bf40b04362c9af0173e",
+   "pr_number": null,
+   "issue_refs": [
+    8112
+   ],
+   "committed_at": "2026-08-08T22:48:37-07:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 9,
+   "history_commits": 843,
+   "snapshot_mb": 59.3,
+   "build_seconds": 15.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": true,
+   "validate_seconds_subprocess": 308.6,
+   "validate_seconds_docker": 362.7,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 29,
+   "gold_nodes": [
+    "sqlglot.parser.Parser._parse_function_properties"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8138",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "1dae76b5833a47c9e2bc0a72a93d94d829377a0c",
+   "pr_number": 8138,
+   "issue_refs": [
+    8132
+   ],
+   "committed_at": "2026-08-12T20:48:50+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 4,
+   "history_commits": 892,
+   "snapshot_mb": 61.8,
+   "build_seconds": 15.5,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 83.4,
+   "validate_seconds_docker": 154.1,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 26,
+   "gold_nodes": [
+    "sqlglot.generators.python._div_sql"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_40f285cb61",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "40f285cb61edff4a40950fc708e79ae4e8ed583d",
+   "pr_number": null,
+   "issue_refs": [
+    8241
+   ],
+   "committed_at": "2026-08-23T09:14:16-07:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 20,
+   "history_commits": 963,
+   "snapshot_mb": 65.1,
+   "build_seconds": 17.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 12.1,
+   "validate_seconds_docker": 68.0,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 32,
+   "gold_nodes": [
+    "sqlglot.parsers.clickhouse.ClickHouseParser"
+   ],
+   "gold_nodes_not_representable": [
+    "sqlglot.parsers.clickhouse.<module>"
+   ],
+   "added_symbols": 2,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8267",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "3110e151bfe6e229ec6b85708a56a9340a56c6a6",
+   "pr_number": 8267,
+   "issue_refs": [
+    8209
+   ],
+   "committed_at": "2026-08-26T13:57:51-05:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 1,
+   "history_commits": 976,
+   "snapshot_mb": 65.6,
+   "build_seconds": 16.8,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.1,
+   "validate_seconds_docker": 66.6,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 12,
+   "gold_nodes": [
+    "sqlglot.generators.sqlite.SQLiteGenerator.windowspec_sql"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8321",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "e27b7654a9d710e29da6f42994de845a99444c84",
+   "pr_number": 8321,
+   "issue_refs": [
+    54
+   ],
+   "committed_at": "2026-09-14T16:27:36+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 61,
+   "history_commits": 1046,
+   "snapshot_mb": 68.5,
+   "build_seconds": 18.4,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 78.1,
+   "validate_seconds_docker": 149.1,
+   "n_fail_to_pass": 7,
+   "n_pass_to_pass": 48,
+   "gold_nodes": [
+    "sqlglot.planner.Step.from_expression"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_a3884168f6",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "a3884168f639633fa8f64334bf63e4b343bedfe2",
+   "pr_number": null,
+   "issue_refs": [
+    8413
+   ],
+   "committed_at": "2026-09-24T14:39:17+03:00",
+   "ai_authored_marker": false,
+   "code_files": 3,
+   "code_lines_changed": 11,
+   "history_commits": 1094,
+   "snapshot_mb": 70.3,
+   "build_seconds": 18.7,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 12.1,
+   "validate_seconds_docker": 65.3,
+   "n_fail_to_pass": 5,
+   "n_pass_to_pass": 74,
+   "gold_nodes": [
+    "sqlglot.expressions.json.ParseJSON",
+    "sqlglot.generators.bigquery.BigQueryGenerator",
+    "sqlglot.parser.Parser"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 1,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8447",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "b3b6c57cea516bf8f76c6262b308d86dff82ca1b",
+   "pr_number": 8447,
+   "issue_refs": [
+    8446
+   ],
+   "committed_at": "2026-09-28T14:49:48+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 7,
+   "history_commits": 1110,
+   "snapshot_mb": 71.7,
+   "build_seconds": 18.5,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 8.8,
+   "validate_seconds_docker": 65.1,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 7,
+   "gold_nodes": [
+    "sqlglot.transforms.eliminate_qualify"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8538",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "e1e0d2e52f45247bfa0ab815eb8a7388ea50a0e8",
+   "pr_number": 8538,
+   "issue_refs": [
+    8534
+   ],
+   "committed_at": "2026-10-07T15:02:01+03:00",
+   "ai_authored_marker": false,
+   "code_files": 2,
+   "code_lines_changed": 36,
+   "history_commits": 1192,
+   "snapshot_mb": 77.1,
+   "build_seconds": 21.3,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.6,
+   "validate_seconds_docker": 60.5,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 16,
+   "gold_nodes": [
+    "sqlglot.parser.Parser._parse_type",
+    "sqlglot.parsers.trino.TrinoParser._parse_routine_statement"
+   ],
+   "gold_nodes_not_representable": [
+    "sqlglot.parsers.trino.<module>"
+   ],
+   "added_symbols": 2,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8596",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "e38929edd78a20f74fc19fee819e14ac23add687",
+   "pr_number": 8596,
+   "issue_refs": [
+    8595
+   ],
+   "committed_at": "2026-10-12T15:08:31+03:00",
+   "ai_authored_marker": true,
+   "code_files": 2,
+   "code_lines_changed": 63,
+   "history_commits": 1247,
+   "snapshot_mb": 81.0,
+   "build_seconds": 22.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.8,
+   "validate_seconds_docker": 58.2,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 15,
+   "gold_nodes": [
+    "sqlglot.generators.teradata.TeradataGenerator",
+    "sqlglot.parsers.teradata.TeradataParser._parse_column_ops"
+   ],
+   "gold_nodes_not_representable": [
+    "sqlglot.generators.teradata.<module>",
+    "sqlglot.parsers.teradata.<module>"
+   ],
+   "added_symbols": 4,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "sqlglot_8686",
+   "repo": "tobymao/sqlglot",
+   "fix_commit": "fdd0e9a464f0f9ec425c56ae83fc87a5e2052087",
+   "pr_number": 8686,
+   "issue_refs": [
+    8684
+   ],
+   "committed_at": "2026-10-20T14:22:39+03:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 11,
+   "history_commits": 1315,
+   "snapshot_mb": 84.6,
+   "build_seconds": 22.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.4,
+   "validate_seconds_docker": 59.5,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 61,
+   "gold_nodes": [
+    "sqlglot.parsers.mysql.MySQLParser"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 1,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8659",
+   "repo": "networkx/networkx",
+   "fix_commit": "e187ba20b38583a329c960062e4b9e0f23c8fc74",
+   "pr_number": 8659,
+   "issue_refs": [
+    8658
+   ],
+   "committed_at": "2026-06-07T18:29:24-04:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 13,
+   "history_commits": 57,
+   "snapshot_mb": 6.5,
+   "build_seconds": 1.8,
+   "valid_subprocess": false,
+   "valid_docker": false,
+   "invalid_reason": "empty_patch_passes",
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.5,
+   "validate_seconds_docker": 35.2,
+   "n_fail_to_pass": 0,
+   "n_pass_to_pass": 37,
+   "gold_nodes": [
+    "networkx.utils.decorators.argmap",
+    "networkx.utils.decorators.argmap._lazy_compile"
+   ],
+   "gold_nodes_not_representable": [
+    "networkx.utils.decorators.<module>"
+   ],
+   "added_symbols": 0,
+   "repro_verified": null
+  },
+  {
+   "instance_id": "networkx_8726",
+   "repo": "networkx/networkx",
+   "fix_commit": "e9eac8a7e04df0b9cdcff8ed1682b3971678f4ed",
+   "pr_number": 8726,
+   "issue_refs": [],
+   "committed_at": "2026-07-02T12:48:10-04:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 2,
+   "history_commits": 80,
+   "snapshot_mb": 6.9,
+   "build_seconds": 1.7,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.6,
+   "validate_seconds_docker": 38.3,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 54,
+   "gold_nodes": [
+    "networkx.generators.geometric.geometric_soft_configuration_graph"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8750",
+   "repo": "networkx/networkx",
+   "fix_commit": "b1f956344071ba1adfad17d56d62a7a78dfd37e6",
+   "pr_number": 8750,
+   "issue_refs": [],
+   "committed_at": "2026-07-10T00:08:18-07:00",
+   "ai_authored_marker": false,
+   "code_files": 2,
+   "code_lines_changed": 16,
+   "history_commits": 88,
+   "snapshot_mb": 7.0,
+   "build_seconds": 1.7,
+   "valid_subprocess": false,
+   "valid_docker": false,
+   "invalid_reason": "gold_fails",
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.4,
+   "validate_seconds_docker": 37.0,
+   "n_fail_to_pass": 0,
+   "n_pass_to_pass": 0,
+   "gold_nodes": [
+    "networkx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash",
+    "networkx.algorithms.graph_hashing.weisfeiler_lehman_subgraph_hashes",
+    "networkx.drawing.nx_pylab.display",
+    "networkx.drawing.nx_pylab.edge_property_sequence",
+    "networkx.drawing.nx_pylab.node_property_sequence"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": null
+  },
+  {
+   "instance_id": "networkx_8807",
+   "repo": "networkx/networkx",
+   "fix_commit": "2ebe5f80a114a181e03e18acc9491e45346598c0",
+   "pr_number": 8807,
+   "issue_refs": [],
+   "committed_at": "2026-07-30T22:51:01+02:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 2,
+   "history_commits": 101,
+   "snapshot_mb": 7.1,
+   "build_seconds": 2.0,
+   "valid_subprocess": false,
+   "valid_docker": false,
+   "invalid_reason": "empty_patch_passes",
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.4,
+   "validate_seconds_docker": 40.0,
+   "n_fail_to_pass": 0,
+   "n_pass_to_pass": 5,
+   "gold_nodes": [
+    "networkx.algorithms.operators.unary.reverse"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": null
+  },
+  {
+   "instance_id": "networkx_8813",
+   "repo": "networkx/networkx",
+   "fix_commit": "2aecdbdd18210c38dc2b9fe32da3825bf30a3c33",
+   "pr_number": 8813,
+   "issue_refs": [
+    8810
+   ],
+   "committed_at": "2026-08-04T10:27:52-07:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 47,
+   "history_commits": 107,
+   "snapshot_mb": 7.2,
+   "build_seconds": 1.9,
+   "valid_subprocess": false,
+   "valid_docker": false,
+   "invalid_reason": "Required test node did not pass: test_graph_input_order",
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 66.7,
+   "validate_seconds_docker": 100.7,
+   "n_fail_to_pass": 13,
+   "n_pass_to_pass": 1014,
+   "gold_nodes": [
+    "networkx.algorithms.isomorphism.vf2pp._all_morphisms",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_all_isomorphisms",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_all_monomorphisms",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_all_subgraph_isomorphisms",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_isomorphism",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_monomorphism",
+    "networkx.algorithms.isomorphism.vf2pp.vf2pp_subgraph_isomorphism"
+   ],
+   "gold_nodes_not_representable": [
+    "networkx.algorithms.isomorphism.vf2pp.<module>"
+   ],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8837",
+   "repo": "networkx/networkx",
+   "fix_commit": "416c3e26da0567c9242aa415810dcffca27d625f",
+   "pr_number": 8837,
+   "issue_refs": [],
+   "committed_at": "2026-08-21T13:34:43-07:00",
+   "ai_authored_marker": false,
+   "code_files": 2,
+   "code_lines_changed": 116,
+   "history_commits": 126,
+   "snapshot_mb": 7.4,
+   "build_seconds": 1.9,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 15.8,
+   "validate_seconds_docker": 46.8,
+   "n_fail_to_pass": 10,
+   "n_pass_to_pass": 55,
+   "gold_nodes": [
+    "networkx.algorithms.connectivity.connectivity.node_connectivity",
+    "networkx.algorithms.connectivity.cuts.minimum_node_cut",
+    "networkx.algorithms.connectivity.cuts.minimum_st_node_cut"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 4,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8879",
+   "repo": "networkx/networkx",
+   "fix_commit": "73cb92bbaed12828848f2609340442119e7e0fe8",
+   "pr_number": 8879,
+   "issue_refs": [
+    8827
+   ],
+   "committed_at": "2026-08-29T12:45:34-07:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 2,
+   "history_commits": 140,
+   "snapshot_mb": 7.5,
+   "build_seconds": 2.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.9,
+   "validate_seconds_docker": 42.0,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 25,
+   "gold_nodes": [
+    "networkx.algorithms.centrality.group.group_betweenness_centrality"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8881",
+   "repo": "networkx/networkx",
+   "fix_commit": "c279073cc33dab38777e701370210d0a7a98849a",
+   "pr_number": 8881,
+   "issue_refs": [
+    8827
+   ],
+   "committed_at": "2026-08-29T21:49:18-04:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 64,
+   "history_commits": 142,
+   "snapshot_mb": 7.5,
+   "build_seconds": 2.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.9,
+   "validate_seconds_docker": 42.1,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 28,
+   "gold_nodes": [
+    "networkx.algorithms.centrality.group.group_betweenness_centrality"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8883",
+   "repo": "networkx/networkx",
+   "fix_commit": "0db8227000872d7a9f6ce84c54ba1e5e99429122",
+   "pr_number": 8883,
+   "issue_refs": [],
+   "committed_at": "2026-09-03T09:52:13-04:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 86,
+   "history_commits": 151,
+   "snapshot_mb": 7.6,
+   "build_seconds": 2.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.2,
+   "validate_seconds_docker": 38.1,
+   "n_fail_to_pass": 2,
+   "n_pass_to_pass": 35,
+   "gold_nodes": [
+    "networkx.algorithms.centrality.group.group_betweenness_centrality",
+    "networkx.algorithms.centrality.group.group_closeness_centrality",
+    "networkx.algorithms.centrality.group.prominent_group"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8899",
+   "repo": "networkx/networkx",
+   "fix_commit": "31ab6fd7e1e149e887282b83a91752c486d071b6",
+   "pr_number": 8899,
+   "issue_refs": [
+    8898
+   ],
+   "committed_at": "2026-09-09T00:03:01+02:00",
+   "ai_authored_marker": true,
+   "code_files": 1,
+   "code_lines_changed": 6,
+   "history_commits": 154,
+   "snapshot_mb": 7.7,
+   "build_seconds": 2.0,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 9.7,
+   "validate_seconds_docker": 37.9,
+   "n_fail_to_pass": 1,
+   "n_pass_to_pass": 10,
+   "gold_nodes": [
+    "networkx.algorithms.link_analysis.hits_alg._hits_numpy"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8890",
+   "repo": "networkx/networkx",
+   "fix_commit": "c94928ed94899033126c9d47f797a1f698584b20",
+   "pr_number": 8890,
+   "issue_refs": [
+    8885
+   ],
+   "committed_at": "2026-09-11T15:46:33+02:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 4,
+   "history_commits": 159,
+   "snapshot_mb": 7.7,
+   "build_seconds": 2.1,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 11.1,
+   "validate_seconds_docker": 37.8,
+   "n_fail_to_pass": 2,
+   "n_pass_to_pass": 104,
+   "gold_nodes": [
+    "networkx.algorithms.isomorphism.ismags.ISMAGS.largest_common_subgraph"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": true
+  },
+  {
+   "instance_id": "networkx_8906",
+   "repo": "networkx/networkx",
+   "fix_commit": "9f6079c0120416599ea5d4018bbaba229ea2e456",
+   "pr_number": 8906,
+   "issue_refs": [],
+   "committed_at": "2026-09-25T16:27:49-04:00",
+   "ai_authored_marker": false,
+   "code_files": 1,
+   "code_lines_changed": 2,
+   "history_commits": 179,
+   "snapshot_mb": 7.9,
+   "build_seconds": 2.2,
+   "valid_subprocess": true,
+   "valid_docker": true,
+   "invalid_reason": null,
+   "base_timeout_hang_bug": false,
+   "validate_seconds_subprocess": 10.5,
+   "validate_seconds_docker": 36.4,
+   "n_fail_to_pass": 3,
+   "n_pass_to_pass": 37,
+   "gold_nodes": [
+    "networkx.algorithms.structuralholes.effective_size"
+   ],
+   "gold_nodes_not_representable": [],
+   "added_symbols": 0,
+   "repro_verified": false
+  }
+ ]
+}

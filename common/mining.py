@@ -22,6 +22,7 @@ FIX_RE = re.compile(r"^(fix|bug|bugfix|hotfix)\b|^BUG\b|^fix\(", re.I)
 ISSUE_REF_RE = re.compile(r"\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s*:?\s+#(\d+)", re.I)
 TRAILING_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
 DOUBLE_REF_RE = re.compile(r"\(#(\d+)\)\s*\(#(\d+)\)\s*$")  # sqlglot style: (#issue) (#PR)
+TEST_ISSUE_RE = re.compile(r"(?:\bgh-|github\.com/[\w.-]+/[\w.-]+/issues/|\bissue\s+#?)(\d{2,6})", re.I)
 AI_RE = re.compile(r"\[CODEX\]|Co-authored-by:.*(Claude|Copilot|Codex|Devin|cursor)|Generated with \[?Claude|"
                    r"copilot-swe-agent|\bAI-assisted\b", re.I)
 
@@ -126,6 +127,11 @@ def mine(args) -> None:
                             | ({int(m2.group(1))} if m2 else set()))
         pr = int(m2.group(2)) if m2 else (int(TRAILING_PR_RE.search(subject).group(1)) if TRAILING_PR_RE.search(subject) else None)
         issue_refs = [i for i in issue_refs if i != pr]
+        test_diff = file_diff(repo, parent, sha, test_files)
+        added_test_text = "\n".join(l for l in test_diff.splitlines() if l.startswith("+"))
+        issue_refs_in_tests = sorted({int(x) for x in TEST_ISSUE_RE.findall(added_test_text)} - {pr})
+        funnel["with_issue_ref_in_tests"] = funnel.get("with_issue_ref_in_tests", 0) + bool(issue_refs_in_tests)
+        funnel["with_any_issue_ref"] = funnel.get("with_any_issue_ref", 0) + bool(issue_refs or issue_refs_in_tests)
         funnel["with_issue_ref_in_message"] += bool(issue_refs)
         ai = bool(AI_RE.search(subject + "\n" + body))
         funnel["ai_authored_marker"] += ai
@@ -136,6 +142,7 @@ def mine(args) -> None:
             "fix_commit": sha,
             "pr_number": pr,
             "issue_refs": issue_refs,
+            "issue_refs_in_tests": issue_refs_in_tests,
             "subject": subject,
             "committed_at": git(repo, "log", "-1", "--format=%cI", sha).strip(),
             "authored_at": git(repo, "log", "-1", "--format=%aI", sha).strip(),
@@ -144,7 +151,7 @@ def mine(args) -> None:
             "code_lines_changed": added,
             "ai_authored_marker": ai,
             "patch": to_dev_style(code_diff),
-            "test_patch": to_dev_style(file_diff(repo, parent, sha, test_files)),
+            "test_patch": to_dev_style(test_diff),
         }
         out.write(json.dumps(rec) + "\n")
     json.dump(funnel, open(args.funnel, "w"), indent=1)

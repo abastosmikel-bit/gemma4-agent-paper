@@ -1,0 +1,81 @@
+{
+ "since": "2026-05-01",
+ "clone_shallow_since": "2026-03-15",
+ "note": "Held-out pilot tasks: instance_id = <repo_short>_<PR number or fix-commit prefix>. Rebuilt from public GitHub by pilot_d/build_tasks.py --ids.",
+ "repos": [
+  {
+   "short": "sqlglot",
+   "repo": "tobymao/sqlglot",
+   "url": "https://github.com/tobymao/sqlglot",
+   "pkg": "sqlglot",
+   "licence": "MIT",
+   "instance_ids": [
+    "sqlglot_17432c6117",
+    "sqlglot_7640",
+    "sqlglot_7809",
+    "sqlglot_169b8364b6",
+    "sqlglot_df5ec1ecd4",
+    "sqlglot_8138",
+    "sqlglot_40f285cb61",
+    "sqlglot_8267",
+    "sqlglot_8321",
+    "sqlglot_a3884168f6",
+    "sqlglot_8447",
+    "sqlglot_8538",
+    "sqlglot_8596",
+    "sqlglot_8686"
+   ],
+   "fix_commits": {
+    "sqlglot_17432c6117": "17432c61175194ee0f56f0703393e8c5fdc9e81f",
+    "sqlglot_7640": "63296846f6a7a683af21683acb24aad7a63bb3f5",
+    "sqlglot_7809": "cf7e4bf4a57d331e4a6e5f4933cb7daf0e503c3b",
+    "sqlglot_169b8364b6": "169b8364b643c4285dcf073aa2f357c5b40831a6",
+    "sqlglot_df5ec1ecd4": "df5ec1ecd43b83ac63800bf40b04362c9af0173e",
+    "sqlglot_8138": "1dae76b5833a47c9e2bc0a72a93d94d829377a0c",
+    "sqlglot_40f285cb61": "40f285cb61edff4a40950fc708e79ae4e8ed583d",
+    "sqlglot_8267": "3110e151bfe6e229ec6b85708a56a9340a56c6a6",
+    "sqlglot_8321": "e27b7654a9d710e29da6f42994de845a99444c84",
+    "sqlglot_a3884168f6": "a3884168f639633fa8f64334bf63e4b343bedfe2",
+    "sqlglot_8447": "b3b6c57cea516bf8f76c6262b308d86dff82ca1b",
+    "sqlglot_8538": "e1e0d2e52f45247bfa0ab815eb8a7388ea50a0e8",
+    "sqlglot_8596": "e38929edd78a20f74fc19fee819e14ac23add687",
+    "sqlglot_8686": "fdd0e9a464f0f9ec425c56ae83fc87a5e2052087"
+   }
+  },
+  {
+   "short": "networkx",
+   "repo": "networkx/networkx",
+   "url": "https://github.com/networkx/networkx",
+   "pkg": "networkx",
+   "licence": "BSD-3-Clause",
+   "instance_ids": [
+    "networkx_8659",
+    "networkx_8726",
+    "networkx_8750",
+    "networkx_8807",
+    "networkx_8813",
+    "networkx_8837",
+    "networkx_8879",
+    "networkx_8881",
+    "networkx_8883",
+    "networkx_8899",
+    "networkx_8890",
+    "networkx_8906"
+   ],
+   "fix_commits": {
+    "networkx_8659": "e187ba20b38583a329c960062e4b9e0f23c8fc74",
+    "networkx_8726": "e9eac8a7e04df0b9cdcff8ed1682b3971678f4ed",
+    "networkx_8750": "b1f956344071ba1adfad17d56d62a7a78dfd37e6",
+    "networkx_8807": "2ebe5f80a114a181e03e18acc9491e45346598c0",
+    "networkx_8813": "2aecdbdd18210c38dc2b9fe32da3825bf30a3c33",
+    "networkx_8837": "416c3e26da0567c9242aa415810dcffca27d625f",
+    "networkx_8879": "73cb92bbaed12828848f2609340442119e7e0fe8",
+    "networkx_8881": "c279073cc33dab38777e701370210d0a7a98849a",
+    "networkx_8883": "0db8227000872d7a9f6ce84c54ba1e5e99429122",
+    "networkx_8899": "31ab6fd7e1e149e887282b83a91752c486d071b6",
+    "networkx_8890": "c94928ed94899033126c9d47f797a1f698584b20",
+    "networkx_8906": "9f6079c0120416599ea5d4018bbaba229ea2e456"
+   }
+  }
+ ]
+}

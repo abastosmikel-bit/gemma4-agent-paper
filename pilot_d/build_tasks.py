@@ -37,11 +37,15 @@ def main():
     p.add_argument("out_dir")
     p.add_argument("--n", type=int, default=12)
     p.add_argument("--issue-linked-only", action="store_true")
+    p.add_argument("--ids", nargs="*", help="build exactly these instance_ids (e.g. from pilot_d/manifest.json)")
     a = p.parse_args()
     rows = [json.loads(l) for l in open(a.candidates)]
-    if a.issue_linked_only:
-        rows = [r for r in rows if r["issue_refs"]]
-    chosen = spread(rows, a.n)
+    if a.ids:
+        chosen = [r for r in rows if r["instance_id"] in set(a.ids)]
+    else:
+        if a.issue_linked_only:
+            rows = [r for r in rows if r["issue_refs"]]
+        chosen = spread(rows, a.n)
     out = Path(a.out_dir)
     (out / "snapshots").mkdir(parents=True, exist_ok=True)
     with open(out / "tasks.jsonl", "a") as ft, open(out / "meta.jsonl", "a") as fm:
@@ -53,7 +57,8 @@ def main():
                 "patch": r["patch"], "test_patch": r["test_patch"],
                 "problem_statement": "", "hints_text": "", "created_at": r["authored_at"],
             }
-            meta = {k: r[k] for k in ("instance_id", "repo", "fix_commit", "pr_number", "issue_refs", "subject",
+            meta = {k: r.get(k) for k in ("instance_id", "repo", "fix_commit", "pr_number", "issue_refs",
+                                      "issue_refs_in_tests", "subject",
                                       "committed_at", "authored_at", "code_files", "test_files",
                                       "code_lines_changed", "ai_authored_marker")}
             meta.update(snap, needs_issue_text=True, build_seconds=round(time.perf_counter() - t0, 1))

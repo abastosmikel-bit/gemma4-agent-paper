@@ -22,10 +22,16 @@ from swegemma.models import load_tasks
 from swegemma.sandbox.subprocess import SubprocessManager
 
 
+# Per-test timeout (pytest-timeout) used ONLY for labelling: a hang bug otherwise kills the whole
+# base run, no JUnit is written, and every test of the file would be mislabelled FAIL_TO_PASS.
+# Validity verdicts still come from verify_task, which runs with the harness's own timeout=0.
+PER_TEST_TIMEOUT = 60
+
+
 def _outcomes(sb, sid, targets: list[str]) -> dict[str, str]:
     xml = "/tmp/_testmap_junit.xml"
     cmd = (f"cd /workspace && rm -f {xml} && PYTHONSAFEPATH=1 PYTHONNOUSERSITE=1 python3 -s -m pytest "
-           f"{' '.join(targets)} --junitxml={xml} -o junit_family=xunit1 -p no:anyio -o timeout=0 "
+           f"{' '.join(targets)} --junitxml={xml} -o junit_family=xunit1 -p no:anyio -o timeout={PER_TEST_TIMEOUT} "
            f"-o python_classes='Test* *Test' -q >/dev/null 2>&1; cat {xml}")
     out = sb.exec(sid, cmd).stdout or ""
     res: dict[str, str] = {}

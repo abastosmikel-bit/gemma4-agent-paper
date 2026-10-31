@@ -1,0 +1,4 @@
+# Test-only dependencies of networkx/networkx used via pytest.importorskip (requirements/test.txt + extras)
+numpy==2.3.4
+scipy==1.16.3
+pandas==2.3.3

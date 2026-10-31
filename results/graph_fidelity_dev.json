@@ -1,0 +1,96 @@
+{
+ "what": "regenerated graphs (common/graph_build.py, faithful mode) vs released dev graphs; one row per dev commit checked; ids/commits omitted",
+ "rows": [
+  {
+   "released_nodes": 4106,
+   "our_nodes": 4106,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9847,
+   "released_undirected_edges": 1163,
+   "our_undirected_edges": 1006,
+   "edge_recall": 0.8444,
+   "edge_recall_on_shared_nodes": 0.8444,
+   "edge_precision": 0.9761,
+   "repo": "fastapi"
+  },
+  {
+   "released_nodes": 4248,
+   "our_nodes": 4248,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9847,
+   "released_undirected_edges": 1208,
+   "our_undirected_edges": 1047,
+   "edge_recall": 0.8469,
+   "edge_recall_on_shared_nodes": 0.8469,
+   "edge_precision": 0.9771,
+   "repo": "fastapi"
+  },
+  {
+   "released_nodes": 2015,
+   "our_nodes": 2015,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9593,
+   "released_undirected_edges": 2885,
+   "our_undirected_edges": 2825,
+   "edge_recall": 0.9518,
+   "edge_recall_on_shared_nodes": 0.9518,
+   "edge_precision": 0.972,
+   "repo": "rich"
+  },
+  {
+   "released_nodes": 1984,
+   "our_nodes": 1984,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9602,
+   "released_undirected_edges": 2833,
+   "our_undirected_edges": 2775,
+   "edge_recall": 0.9513,
+   "edge_recall_on_shared_nodes": 0.9513,
+   "edge_precision": 0.9712,
+   "repo": "rich"
+  },
+  {
+   "released_nodes": 2011,
+   "our_nodes": 2011,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9597,
+   "released_undirected_edges": 2876,
+   "our_undirected_edges": 2820,
+   "edge_recall": 0.952,
+   "edge_recall_on_shared_nodes": 0.952,
+   "edge_precision": 0.9709,
+   "repo": "rich"
+  },
+  {
+   "released_nodes": 740,
+   "our_nodes": 740,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.973,
+   "released_undirected_edges": 809,
+   "our_undirected_edges": 817,
+   "edge_recall": 0.9604,
+   "edge_recall_on_shared_nodes": 0.9604,
+   "edge_precision": 0.951,
+   "repo": "httpx"
+  },
+  {
+   "released_nodes": 711,
+   "our_nodes": 711,
+   "node_recall": 1.0,
+   "node_precision": 1.0,
+   "text_exact_on_common": 0.9916,
+   "released_undirected_edges": 874,
+   "our_undirected_edges": 1041,
+   "edge_recall": 0.9348,
+   "edge_recall_on_shared_nodes": 0.9348,
+   "edge_precision": 0.7848,
+   "repo": "requests"
+  }
+ ]
+}

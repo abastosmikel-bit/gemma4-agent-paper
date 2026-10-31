@@ -1,0 +1,38 @@
+{
+ "what": "swegemma verify_task on a stratified sample of DEV tasks: empty patch must fail, gold patch must pass. Host env for subprocess = harness deps + test deps declared for held-out repos (no dev-repo test plugins). Docker = image built from the host's Dockerfile.public + public wheels/.",
+ "by_backend": {
+  "subprocess": {
+   "fastapi/fastapi": {
+    "valid": 3,
+    "gold_patch_fails": 7
+   },
+   "psf/requests": {
+    "gold_patch_fails": 10,
+    "empty_patch_already_passes": 3
+   },
+   "Textualize/rich": {
+    "valid": 11,
+    "gold_patch_fails": 1
+   },
+   "encode/httpx": {
+    "gold_patch_fails": 1
+   }
+  },
+  "docker": {
+   "psf/requests": {
+    "gold_patch_fails": 10,
+    "empty_patch_already_passes": 3
+   },
+   "fastapi/fastapi": {
+    "gold_patch_fails": 10
+   },
+   "Textualize/rich": {
+    "valid": 11,
+    "gold_patch_fails": 1
+   },
+   "encode/httpx": {
+    "gold_patch_fails": 1
+   }
+  }
+ }
+}

@@ -1,0 +1,5 @@
+# Test-only dependencies of tobymao/sqlglot (from setup.py extras "dev", imported by tests/)
+duckdb==1.4.1
+pandas==2.3.3
+pytz==2025.2
+python-dateutil==2.9.0.post0

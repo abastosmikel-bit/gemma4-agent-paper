@@ -1,0 +1,73 @@
+{
+ "n_tasks": 129,
+ "by_repo": {
+  "psf/requests": 13,
+  "fastapi/fastapi": 67,
+  "Textualize/rich": 48,
+  "encode/httpx": 1
+ },
+ "src_files_per_task": {
+  "1": 91,
+  "2": 19,
+  "3": 5,
+  "4": 3,
+  "5": 1,
+  "6": 10
+ },
+ "tasks_with_new_src_file": 11,
+ "tasks_with_no_py_src_change": 0,
+ "functions_per_task": {
+  "0": 7,
+  "1": 68,
+  "2": 16,
+  "3": 11,
+  "4": 7,
+  "5": 3,
+  "6": 4,
+  "7": 1,
+  "8": 2,
+  "9": 1,
+  "10": 9
+ },
+ "tasks_with_module_level_change": 54,
+ "tasks_module_level_only": 6,
+ "tasks_with_non_py_or_test_files_in_gold": 0,
+ "gold_changed_lines_median": 12,
+ "gold_changed_lines_quartiles": [
+  4.0,
+  12.0,
+  44.5
+ ],
+ "test_files_per_task": {
+  "1": 98,
+  "2": 15,
+  "3": 5,
+  "4": 1,
+  "5": 1,
+  "6": 2,
+  "8": 1,
+  "11": 1,
+  "12": 1,
+  "17": 1,
+  "18": 1,
+  "23": 1,
+  "29": 1
+ },
+ "tasks_all_test_files_new": 32,
+ "tasks_some_test_file_new": 44,
+ "required_tests_per_task": {
+  "0": 1,
+  "1": 56,
+  "2": 22,
+  "3": 10,
+  "4": 16,
+  "5": 6,
+  "6": 1,
+  "7": 4,
+  "8": 1,
+  "10": 12
+ },
+ "tasks_with_zero_required_test_names": 1,
+ "parse_errors": 0,
+ "single_file_existing_le2_funcs": 75
+}

@@ -1,0 +1,379 @@
+"""Kaggle-side runner for Pilot C (imported by the notebooks; runs only on Kaggle).
+
+Reproduces the official starter's evaluation path (swegemma Evaluator, subprocess
+sandbox, vLLM with max_model_len=32768, tool/reasoning parser gemma4, the same
+compaction and context-cache settings as the scorer per HARNESS_README §7.2) and
+changes only: model alias, per-task budget (eval_config.yaml), task copies with
+oracle hints, results dir, concurrency.
+
+Outputs:
+  /kaggle/working/private/...         raw runs (patches, traces) - NEVER commit
+  /kaggle/working/pilot_c_<tag>.json  numbers only - commit to results/
+"""
+from __future__ import annotations
+
+import asyncio
+import concurrent.futures
+import datetime as _dt
+import glob
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from common.metrics import aggregate, paired_flips, task_metrics  # noqa: E402
+from common.tasks import diff_scopes, gold_locations, load_tasks  # noqa: E402
+from common.trace import load_trace  # noqa: E402
+from pilot_c.hints import rewrite_task  # noqa: E402
+
+WORK = Path(os.environ.get("PILOT_WORK_DIR", "/kaggle/working"))
+PRIVATE = WORK / "private"
+ALLOWED = ("gemma-4-31b-it-qat-w4a16-ct", "gemma-4-12b-it-qat-w4a16-ct",
+           "gemma-4-e4b-it-qat-w4a16-ct", "gemma-4-e2b-it-qat-w4a16-ct")
+SHORT = {m: m.split("-")[2] for m in ALLOWED}  # 31b / 12b / e4b / e2b
+MODEL_VLLM_EXTRA_ARGS = {
+    "gemma-4-12b-it-qat-w4a16-ct": ("--hf-overrides", '{"architectures": ["Gemma4ForCausalLM"], "model_type": "gemma4"}'),
+}
+GPU_ONLY_WHEELS = ("vllm", "flashinfer", "bitsandbytes", "xgrammar", "nvidia_", "quack_kernels", "apache_tvm_ffi")
+
+
+def _first_dir(*cands: str) -> Path:
+    for c in cands:
+        for p in sorted(glob.glob(c)):
+            if Path(p).is_dir():
+                return Path(p)
+    raise FileNotFoundError(f"none of {cands} found")
+
+
+def data_dir() -> Path:
+    if os.environ.get("PILOT_DATA_DIR"):  # local testing only
+        return Path(os.environ["PILOT_DATA_DIR"])
+    return _first_dir("/kaggle/input/competitions/gemma-4-developer-agent", "/kaggle/input/gemma-4-developer-agent")
+
+
+def wheelhouse_dir() -> Path:
+    return _first_dir("/kaggle/input/datasets/metric/gemma-4-developer-agent-wheelhouse",
+                      "/kaggle/input/gemma-4-developer-agent-wheelhouse")
+
+
+def set_env() -> None:
+    """Same environment variables as the official starter notebook."""
+    env = {
+        "TRANSFORMERS_NO_TF": "1", "TRANSFORMERS_NO_FLAX": "1", "TRANSFORMERS_OFFLINE": "1",
+        "VLLM_NO_USAGE_STATS": "1", "VLLM_WORKER_MULTIPROC_METHOD": "spawn", "VLLM_ENGINE_READY_TIMEOUT_S": "1200",
+        "VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS": "1", "NCCL_DEBUG": "WARN", "LITELLM_LOCAL_MODEL_COST_MAP": "True",
+        "LITELLM_TELEMETRY": "False", "LITELLM_LOG": "WARNING", "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+        "OTEL_SDK_DISABLED": "true", "OTEL_PYTHON_DISABLED": "true",
+    }
+    os.environ.update(env)
+    os.environ.setdefault("KAGGLE_SANDBOX_DIR", str(data_dir() / "sandbox"))
+    os.environ.setdefault("OPENAI_API_KEY", "EMPTY")
+    os.environ.setdefault("LOCAL_API_KEY", "EMPTY")
+
+
+def install_wheelhouse(gpu: bool = True) -> None:
+    """Starter-identical wheel install (cpu mode skips GPU-only wheels)."""
+    import importlib
+    for pat in ("/usr/local/lib/python*/dist-packages/*cutlass*.pth", "/usr/local/lib/python*/site-packages/*cutlass*.pth"):
+        for pth in glob.glob(pat):
+            try:
+                os.unlink(pth)
+            except OSError:
+                pass
+    tmp = Path("/tmp/wheelhouse")
+    tmp.mkdir(parents=True, exist_ok=True)
+    for w in wheelhouse_dir().glob("*.whl"):
+        if "cutlass" in w.name.lower() or (not gpu and w.name.startswith(GPU_ONLY_WHEELS)):
+            continue
+        name = w.name.replace("cu128", "+cu128") if ("cu128" in w.name and "+" not in w.name) else w.name
+        t = tmp / name
+        if not t.exists():
+            try:
+                os.symlink(w, t)
+            except OSError:
+                shutil.copyfile(w, t)
+    wheels = sorted(str(w) for w in tmp.glob("*.whl"))
+    print(f"installing {len(wheels)} wheels")
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--no-deps", "--force-reinstall", *wheels], check=True)
+    importlib.invalidate_caches()
+
+
+def quiet_logs() -> None:
+    import logging
+    for name in ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy", "litellm", "httpx", "httpcore", "openai", "urllib3",
+                 "opentelemetry", "opentelemetry.context"):
+        lg = logging.getLogger(name)
+        lg.setLevel(logging.WARNING)
+        if "litellm" in name.lower():
+            lg.propagate = False
+            lg.handlers.clear()
+
+
+def run_sync(fn, *args, **kwargs):
+    """Run an async callable from a notebook (same helper as the starter)."""
+    coro_fn = lambda: fn(*args, **kwargs)  # noqa: E731
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(lambda: asyncio.run(coro_fn())).result()
+    return asyncio.run(coro_fn())
+
+
+def env_info() -> dict[str, Any]:
+    info: dict[str, Any] = {"python": platform.python_version(), "nproc": os.cpu_count()}
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                             capture_output=True, text=True, timeout=30).stdout.strip().splitlines()
+        info["gpus"] = out
+    except Exception:  # noqa: BLE001
+        info["gpus"] = []
+    try:
+        import importlib.metadata as md
+        info["versions"] = {p: md.version(p) for p in ("swegemma", "adk-eval-core", "adk-submission", "google-adk", "vllm")
+                            if _has_dist(md, p)}
+    except Exception:  # noqa: BLE001
+        pass
+    return info
+
+
+def _has_dist(md, p: str) -> bool:
+    try:
+        md.version(p)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+# --------------------------------------------------------------------------- tasks & hints
+
+def build_gold(task_ids: list[str]) -> dict[str, dict]:
+    d = data_dir()
+    tasks = {t["instance_id"]: t for t in load_tasks(d / "tasks.jsonl")}
+    out = {}
+    for iid in task_ids:
+        out[iid] = gold_locations(tasks[iid], d / "snapshots" / f"{iid}.tgz").to_dict()
+    return out
+
+
+def write_task_copy(task_ids: list[str], gold: dict[str, dict], condition: str) -> Path:
+    """Local hinted copy of tasks.jsonl for one condition (kept under PRIVATE)."""
+    d = data_dir()
+    tasks = {t["instance_id"]: t for t in load_tasks(d / "tasks.jsonl")}
+    PRIVATE.mkdir(parents=True, exist_ok=True)
+    path = PRIVATE / f"tasks_{condition}.jsonl"
+    with open(path, "w", encoding="utf-8") as f:
+        for iid in task_ids:
+            f.write(json.dumps(rewrite_task(tasks[iid], gold[iid], condition)) + "\n")
+    return path
+
+
+# --------------------------------------------------------------------------- agent & server
+
+def prepare_agent_dir(model: str, budget: dict[str, Any]) -> Path:
+    """Official sample_submission with the model alias swapped and the sample's dummy LoRA
+    adapters removed for EVERY size (starter logic for non-31B; for 31B too, so all sizes run the
+    plain base model), and eval_config.yaml replaced by the pilot budget."""
+    assert model in ALLOWED, model
+    src = data_dir() / "sample_submission"
+    dst = WORK / f"agent_{SHORT[model]}"
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+    shutil.rmtree(dst / "adapters", ignore_errors=True)
+    for y in [dst / "agent.yaml", *sorted((dst / "sub_agents").glob("*.yaml"))]:
+        if y.is_file():
+            txt = y.read_text(encoding="utf-8")
+            txt = re.sub(r"^(\s*model:\s*).*$", rf"\g<1>{model}", txt, flags=re.M)
+            txt = re.sub(r"^\s*adapter:\s*.*\n?", "", txt, flags=re.M)
+            y.write_text(txt, encoding="utf-8")
+    lines = ["evaluation:"] + [f"  {k}: {v}" for k, v in budget.items()]
+    (dst / "eval_config.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return dst
+
+
+def describe_agent(agent_dir: Path) -> dict[str, Any]:
+    import yaml
+    a = yaml.safe_load((agent_dir / "agent.yaml").read_text().replace("!include", "#include")) or {}
+    samp = yaml.safe_load((agent_dir / "configs" / "sampling.yaml").read_text())
+    tools = [t if isinstance(t, str) else "agent_tool:" + str(t.get("agent_tool", {}).get("config_path")) for t in a.get("tools", [])]
+    return {"model": a.get("model"), "tools": tools, "sampling": samp,
+            "eval_config": yaml.safe_load((agent_dir / "eval_config.yaml").read_text())}
+
+
+def start_server(agent_dir: Path):
+    """Starter-identical vLLM launch. Returns (server, models, startup_seconds)."""
+    import litellm
+    import torch
+    from adk_submission import VllmConfig, VllmServer, discover_adapters
+    from adk_submission.discovery import discover_declared_models
+    from swegemma.config import ALLOWED_ADAPTER_EXTENSIONS
+
+    litellm.drop_params = True
+    declared = discover_declared_models(agent_dir)
+    assert len(declared) == 1, declared
+    model = next(iter(declared))
+    assert model in ALLOWED, model
+    model_path = Path(f"/kaggle/input/models/google/gemma-4/other/{model}/2")
+    if not model_path.exists():
+        model_path = _first_dir(f"/kaggle/input/models/google/gemma-4/*/{model}/*", f"/kaggle/input/gemma-4/*/{model}/*")
+    adapters = discover_adapters(str(agent_dir), adapter_extensions=ALLOWED_ADAPTER_EXTENSIONS)
+    amap = getattr(adapters, "adapters", None) or {}
+    ranks = [r for info in amap.values() if (r := getattr(info, "rank", None)) is not None and r > 0]
+    n = torch.cuda.device_count() if torch.cuda.is_available() else 1
+    tp = 4 if n >= 4 else (2 if n >= 2 else 1)
+    cfg = VllmConfig(
+        model=str(model_path), port=8000, host="127.0.0.1", tool_call_parser="gemma4", reasoning_parser="gemma4",
+        max_model_len=32768, dtype="bfloat16" if (torch.cuda.is_available() and torch.cuda.is_bf16_supported()) else "auto",
+        gpu_memory_utilization=0.90, enable_auto_tool_choice=True, enable_lora=bool(amap), max_loras=max(1, len(amap)),
+        max_lora_rank=max(ranks) if ranks else 128, scheduler_reserve_full_isl=False, tensor_parallel_size=tp,
+        startup_timeout=60 * 20, extra_args=MODEL_VLLM_EXTRA_ARGS.get(model, ()),
+    )
+    t0 = time.perf_counter()
+    server = VllmServer(cfg, adapter_manifest=adapters)
+    server.start()
+    startup = time.perf_counter() - t0
+    models = server.create_model_registry(aliases=[model], model_prefix="openai/", api_key=os.environ.get("LOCAL_API_KEY", "EMPTY"))
+    print(f"vLLM up for {model} in {startup:.0f}s (tp={tp})")
+    return server, models, adapters, startup
+
+
+# --------------------------------------------------------------------------- evaluation
+
+def make_eval_config(agent_dir: Path, models, adapters, tasks_path: Path, task_ids: list[str], results_dir: Path,
+                     concurrency: int, sandbox: str = "subprocess"):
+    import yaml
+    from google.adk.agents.context_cache_config import ContextCacheConfig
+    from google.adk.apps._configs import EventsCompactionConfig
+    from swegemma.config import EvalConfig, build_submission_limits
+
+    raw = yaml.safe_load((agent_dir / "eval_config.yaml").read_text()) or {}
+    ev = raw.get("evaluation", raw)
+    turns = ev.get("max_turns", ev.get("max_llm_calls"))
+    limits, gen = build_submission_limits()
+    d = data_dir()
+    return EvalConfig(
+        tasks_path=tasks_path, snapshots_dir=d / "snapshots", results_dir=results_dir, submission_dir=agent_dir,
+        models=models, sandbox=sandbox,
+        timeout_seconds=int(ev.get("timeout_seconds", 300)),
+        verification_timeout_seconds=int(ev.get("verification_timeout_seconds", 300)),
+        max_time_minutes=float(ev.get("max_time_minutes", 60.0)), max_tool_calls=int(ev.get("max_tool_calls", 100)),
+        max_turns=int(turns) if turns is not None else None,
+        limits=limits, generation_constraints=gen, adapter_manifest=adapters,
+        context_cache_config=ContextCacheConfig(min_tokens=2048, ttl_seconds=1800, cache_intervals=10),
+        events_compaction_config=EventsCompactionConfig(compaction_interval=15, overlap_size=2, token_threshold=14336,
+                                                        event_retention_size=5),
+        graph_dir=str(d / "graphs"), embeddings_dir=str(d / "embeddings"), wheels_dir=d / "wheels",
+        verbose=False, task_ids=list(task_ids), concurrency=concurrency, display_mode="quiet",
+    )
+
+
+def _result_dict(r) -> dict[str, Any]:
+    try:
+        d = r.model_dump(exclude={"trace"})
+    except Exception:  # noqa: BLE001
+        d = dict(r.__dict__)
+        d.pop("trace", None)
+    d.setdefault("instance_id", getattr(r, "instance_id", None) or d.get("task_id"))
+    return d
+
+
+def collect_rows(results, results_dir: Path, gold: dict[str, dict]) -> list[dict[str, Any]]:
+    d = data_dir()
+    rows = []
+    for r in results:
+        rd = _result_dict(r)
+        iid = rd.get("instance_id") or rd.get("task_id")
+        tpath = rd.get("trace_path") or str(results_dir / "traces" / f"trace_{iid}.json")
+        events = load_trace(tpath) if tpath and Path(tpath).exists() else []
+        patch = rd.get("agent_patch") or ""
+        scopes = diff_scopes(patch, d / "snapshots" / f"{iid}.tgz") if patch.strip() else []
+        row = task_metrics(rd, events, gold=gold.get(iid), agent_patch_scopes=scopes)
+        row["trace_found"] = bool(events)
+        rows.append(row)
+    return rows
+
+
+def run_condition(agent_dir: Path, models, adapters, task_ids: list[str], gold: dict[str, dict], condition: str,
+                  replicate: int, concurrency: int) -> dict[str, Any]:
+    from swegemma.evaluate import Evaluator
+    model_short = agent_dir.name.replace("agent_", "")
+    tasks_path = write_task_copy(task_ids, gold, condition)
+    rdir = PRIVATE / "runs" / model_short / f"{condition}_r{replicate}"
+    if rdir.exists():
+        shutil.rmtree(rdir)
+    rdir.mkdir(parents=True)
+    cfg = make_eval_config(agent_dir, models, adapters, tasks_path, task_ids, rdir, concurrency)
+    t0 = time.perf_counter()
+    res = run_sync(Evaluator(cfg).run)
+    batch = time.perf_counter() - t0
+    rows = collect_rows(res.task_results, rdir, gold)
+    agg = aggregate(rows)
+    print(f"[{model_short} {condition} r{replicate}] resolved {agg['resolved']}/{agg['n_tasks']} "
+          f"batch {batch/60:.1f} min, mean wall {agg['wall_s_mean']}s, calls {agg['tool_calls_mean']}")
+    return {"model": model_short, "condition": condition, "replicate": replicate, "concurrency": concurrency,
+            "batch_wall_s": round(batch, 1), "aggregate": agg, "rows": rows}
+
+
+def save_summary(path: Path, summary: dict[str, Any]) -> None:
+    runs = summary.get("runs", [])
+    comps = []
+    base = {(r["model"]): r for r in runs if r["condition"] == "O0" and r["replicate"] == 1}
+    for r in runs:
+        b = base.get(r["model"])
+        if b is not None and r is not b:
+            comps.append({"model": r["model"], "a": "O0_r1", "b": f"{r['condition']}_r{r['replicate']}",
+                          **paired_flips(b["rows"], r["rows"])})
+    summary["paired_vs_O0_r1"] = comps
+    summary["saved_utc"] = _dt.datetime.utcnow().isoformat(timespec="seconds")
+    path.write_text(json.dumps(summary, indent=1))
+    print(f"saved {path}")
+
+
+# --------------------------------------------------------------------------- CPU gold check
+
+def gold_check(task_ids: list[str], out_path: Path, timeout_s: int = 300) -> dict[str, Any]:
+    """CPU-only: apply each task's GOLD patch in the scorer's Phase-2 sandbox and record resolved.
+    Tells us which tasks are solvable at all in the Kaggle subprocess sandbox. Numbers only."""
+    from adk_submission.registry import ModelRegistry
+    from swegemma.config import EvalConfig
+    from swegemma.deduplication import resolve_task_snapshot_paths
+    from swegemma.evaluate import Evaluator
+    from swegemma.harness.verification import verify_task
+    from swegemma.models import load_tasks as sg_load
+
+    d = data_dir()
+    PRIVATE.mkdir(parents=True, exist_ok=True)
+    cfg = EvalConfig(tasks_path=d / "tasks.jsonl", snapshots_dir=d / "snapshots", results_dir=PRIVATE / "gold_check",
+                     submission_dir=d / "sample_submission", models=ModelRegistry(), sandbox="subprocess",
+                     timeout_seconds=timeout_s, verification_timeout_seconds=timeout_s, wheels_dir=d / "wheels",
+                     graph_dir=str(d / "graphs"), embeddings_dir=str(d / "embeddings"), display_mode="quiet")
+    ev = Evaluator(cfg)
+    tasks = {t.instance_id: t for t in sg_load(d / "tasks.jsonl")}
+    rows = []
+    for i, iid in enumerate(task_ids, 1):
+        t = tasks[iid]
+        snap, base, patch = resolve_task_snapshot_paths(d / "snapshots", iid, t.repo)
+        t0 = time.perf_counter()
+        try:
+            r = run_sync(verify_task, ev.docker, cfg, t, snap, base_snapshot_path=base, patch_path=patch,
+                         agent_patch=t.patch, agent_error=None, trace=None, start_time=t0)
+            ok, err = bool(r.resolved), (r.error or "")[:160] or None
+        except Exception as e:  # noqa: BLE001
+            ok, err = False, f"{type(e).__name__}: {e}"[:160]
+        dt = time.perf_counter() - t0
+        rows.append({"instance_id": iid, "gold_resolved": ok, "verify_s": round(dt, 1), "error": err})
+        print(f"[{i}/{len(task_ids)}] {iid} gold_resolved={ok} {dt:.0f}s {err or ''}")
+        out_path.write_text(json.dumps({"rows": rows, "env": env_info()}, indent=1))
+    return {"rows": rows}

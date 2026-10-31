@@ -12,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ["common/__init__.py", "common/diffs.py", "common/locate.py", "common/tasks.py", "common/trace.py",
-              "common/metrics.py", "common/runtime_probes.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json"]
+              "common/metrics.py", "common/runtime_probes.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json",
+              "pilot_c/probe.py", "pilot_c/capture_server.py", "pilot_c/probe_runner.py"]
 DOCKER_IMAGE = "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461"
 MODELS = ["google/gemma-4/Other/gemma-4-e4b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-e2b-it-qat-w4a16-ct/2",
           "google/gemma-4/Other/gemma-4-31b-it-qat-w4a16-ct/2", "google/gemma-4/Other/gemma-4-12b-it-qat-w4a16-ct/2"]
@@ -215,6 +216,122 @@ PLAN = [('gemma-4-e4b-it-qat-w4a16-ct', conds)] + ([('gemma-4-e2b-it-qat-w4a16-c
     return _nb(cells), _meta(name, gpu=True)
 
 
+PROBE_CONFIG = """
+# ---- configuration (only edit here) — docs/PLAN.md (frozen at 168d115)
+PLAN_COMMIT = '168d11573bf20003435e4b4a1874cfaebddd0ce1'
+GOLD_CHECK = json.loads(kr.find_input_json('pilot_c_gold_check_kaggle.json').read_text())   # notebook 00 output
+order = GOLD_CHECK['selection']['eligible_valid_in_order']       # pre-registered per-repo order of VALID tasks
+rr, k = [], 0
+while any(len(v) > k for v in order.values()):
+    rr += [v[k] for v in order.values() if len(v) > k]; k += 1
+CANDIDATES = rr[:40]                    # records are built for up to 40, the first 30 constructible are probed
+MAX_TASKS = 30
+SIZES = ['gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct', 'gemma-4-12b-it-qat-w4a16-ct', 'gemma-4-e2b-it-qat-w4a16-ct']
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # capture runs the real agent config
+MAX_SESSION_HOURS = 2.9
+WORKERS = 16
+print(len(CANDIDATES), 'candidates;', 'low power (<20)' if len(CANDIDATES) < 20 else 'ok')
+"""
+
+PROBE_RUN = """
+from pilot_c import probe_runner as pr
+from pilot_c import probe as pb
+OUT = Path('/kaggle/working/pilot_c_probe.json')
+summary = {'pilot': 'C', 'notebook': 'probe', 'plan_commit': PLAN_COMMIT, 'env': kr.env_info(), 'sizes': [], 'd1': [], 'd2': []}
+def save():
+    summary['summary'] = pr.summarize(summary['d1'], summary['d2'])
+    summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
+    OUT.write_text(json.dumps(summary, indent=1)); print('saved', OUT, summary['session_elapsed_h'], 'h')
+
+# 1-2: records (CPU) and harness graph output (CPU)
+recs, excluded = pr.build_records(CANDIDATES)
+recs = recs[:MAX_TASKS]
+pr.attach_graphs(recs)
+summary['task_ids'] = [r['instance_id'] for r in recs]
+summary['excluded'] = excluded
+summary['controls'] = {r['instance_id']: {k: v for k, v in r['wrong'].items() if k.endswith('ratio')} for r in recs}
+summary['outside_edits'] = {r['instance_id']: r['outside_edits'] for r in recs}
+# 3: capture the agent's exact contexts with the real harness loop (CPU, no model)
+ctxs = pr.capture_contexts(recs, BUDGET)
+summary['context_checks'] = {r['instance_id']: pr.context_check(r, ctxs[r['instance_id']]) for r in recs if r['instance_id'] in ctxs}
+summary['capture_missing'] = [r['instance_id'] for r in recs if r['instance_id'] not in ctxs]
+kr.PRIVATE.mkdir(parents=True, exist_ok=True)
+with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:
+    for r in recs: f.write(json.dumps(pb.public_record(r)) + '\\n')
+(kr.PRIVATE / 'probe_contexts.json').write_text(json.dumps(ctxs))
+save()
+
+# 4: one vLLM server per size (starter-identical); 31b first because it writes the words rung
+deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
+for model in SIZES:
+    if time.time() > deadline - 600:
+        summary['sizes'].append({'model': model, 'skipped': 'session time guard'}); continue
+    agent_dir = kr.prepare_agent_dir(model, BUDGET)
+    server, models, adapters, startup = kr.start_server(agent_dir)
+    try:
+        res = pr.run_size(server, model, recs, ctxs, deadline, WORKERS, write_words_here=(model.startswith('gemma-4-31b')))
+    except Exception as e:
+        res = {'size': kr.SHORT[model], 'error': f'{type(e).__name__}: {str(e)[:300]}', 'd1': [], 'd2': []}
+    finally:
+        server.stop()
+    summary['d1'] += res.pop('d1'); summary['d2'] += res.pop('d2')
+    summary['sizes'].append({'model': model, 'startup_s': round(startup, 1), **res})
+    save()
+    if 'SELFCHECK' in str(res.get('error', '')) and len(summary['sizes']) == 1:
+        print('API self-check failed on the first size: stopping to save GPU quota'); break
+with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:   # again, now with words and cross-task controls
+    for r in recs: f.write(json.dumps(pb.public_record(r)) + '\\n')
+print(json.dumps({k: v for k, v in summary['summary'].items() if '/use/' in k and 'depth2' not in k}, indent=0)[:3000])
+"""
+
+VERIFY_RUN = """
+from pilot_c import probe_runner as pr
+recs_path = kr.find_input_json('probe_records.jsonl')
+sample_files = sorted(recs_path.parent.glob('probe_samples_*.jsonl'))
+print('records', recs_path, 'samples', [p.name for p in sample_files])
+res = pr.verify_samples(recs_path, sample_files, Path('/kaggle/working/pilot_c_probe_verify.json'))
+print(json.dumps(res['summary'], indent=1))
+"""
+
+
+def probe_nb() -> dict:
+    name = "probe"
+    cells = [md("""
+# Pilot C — 03: information-ladder probe (GPU, L4 x4)
+Pre-registered design: `docs/PLAN.md` (frozen at commit 168d115). For each valid task (from notebook 00) and each size
+(31b, e4b, 12b, e2b): (1) capture the agent's exact contexts by running the real harness loop against a capture server
+(CPU), (2) score the log-likelihood of the canonical correct action under each rung (depth 1, `prompt_logprobs`),
+(3) sample one next action with the agent's settings (depth 2). 31b first writes the "change in words" rung.
+
+Accelerator: **GPU L4 x4**. Inputs: competition, wheelhouse dataset, all four Gemma 4 QAT models, **notebook 00's output**.
+Time guard `MAX_SESSION_HOURS` (default 2.9 h). Commit only `pilot_c_probe.json` (ids + numbers). Keep `private/` on Kaggle;
+notebook 03v (CPU) runs the tests on the sampled edits from it.
+""")]
+    cells += code_cells()
+    cells.append(code(PRECHECK_00.replace("import sys, json", "import os, sys, json").replace(
+        "assert len(_gc['selection']['smoke3']) == 3, f\"notebook 00 found fewer than 3 valid tasks: {_gc['selection']['smoke3']}\"",
+        "assert _gc['summary']['valid'] >= int(os.environ.get('PILOT_MIN_VALID', 10)), f\"too few valid tasks: {_gc['summary']['valid']}\"")))
+    cells.append(code(SETUP.format(gpu="True")))
+    cells.append(code(PROBE_CONFIG))
+    cells.append(code(PROBE_RUN))
+    cells.append(md(RESULTS_NOTE.format(name="probe")))
+    return _nb(cells), _meta(name, gpu=True)
+
+
+def probe_verify_nb() -> dict:
+    name = "probe_verify_cpu"
+    cells = [md("""
+# Pilot C — 03v: run the required tests on the probe's sampled edits (CPU only, no GPU quota)
+Attach notebook 03's output (it contains `private/probe_records.jsonl` and `private/probe_samples_*.jsonl`).
+Each sampled S-use edit is applied alone to the base snapshot and verified with the scorer's Phase-2 path.
+""")]
+    cells += code_cells()
+    cells.append(code(SETUP.format(gpu="False")))
+    cells.append(code(VERIFY_RUN))
+    cells.append(md(RESULTS_NOTE.format(name="probe_verify")))
+    return _nb(cells), _meta(name, gpu=False)
+
+
 def _nb(cells: list[dict]) -> dict:
     for i, c in enumerate(cells):
         c["id"] = f"cell-{i:03d}"  # nbformat >= 4.5 requires cell ids
@@ -229,15 +346,17 @@ def _meta(name: str, gpu: bool) -> dict:
          "dataset_sources": ["metric/gemma-4-developer-agent-wheelhouse"], "kernel_sources": [],
          "competition_sources": ["gemma-4-developer-agent"], "model_sources": MODELS if gpu else [],
          "docker_image": DOCKER_IMAGE}
-    if name == "smoke_timing":
+    if name in ("smoke_timing", "probe"):
         m["kernel_sources"] = ["YOUR_KAGGLE_USERNAME/pilot-c-gold-check-cpu"]
+    if name == "probe_verify_cpu":
+        m["kernel_sources"] = ["YOUR_KAGGLE_USERNAME/pilot-c-probe"]
     if gpu:
         m["machine_shape"] = "NvidiaL4"  # same as the official starter; choose "GPU L4 x4" in the UI if needed
     return m
 
 
 def main() -> None:
-    for build in (gold_check_nb, smoke_nb, pilot_nb):
+    for build in (gold_check_nb, smoke_nb, pilot_nb, probe_nb, probe_verify_nb):
         nb, meta = build()
         name = meta["code_file"][:-6]
         d = ROOT / "notebooks" / f"pilot_c_{name}"

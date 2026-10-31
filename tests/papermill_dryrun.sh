@@ -9,7 +9,7 @@ REPO=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p /kaggle/input/competitions /kaggle/input/datasets/metric/gemma-4-developer-agent-wheelhouse /kaggle/working "$OUT"
 [ -e /kaggle/input/competitions/gemma-4-developer-agent ] || ln -s "$COMP" /kaggle/input/competitions/gemma-4-developer-agent
 PM="$VENV/bin/papermill"
-IDS=${PILOT_TEST_IDS:-fastapi_15588,rich_3454,requests_7309,fastapi_14360,rich_4079,requests_7502}
+IDS=${PILOT_TEST_IDS:-fastapi_15588,rich_3454,rich_3470,rich_3518,requests_7309,fastapi_14360,rich_4079,requests_7502}
 for nb in "$@"; do
   rm -rf /kaggle/working/*
   case $nb in
@@ -19,8 +19,12 @@ for nb in "$@"; do
         cp /kaggle/working/pilot_c_gold_check_kaggle.json /kaggle/input/notebooks/me/pilot-c-gold-check-cpu/ ;;
     01) PILOT_MOCK_LLM=1 PILOT_REPO=$REPO "$PM" "$REPO/notebooks/pilot_c_smoke_timing/smoke_timing.ipynb" "$OUT/01_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
         cp /kaggle/working/pilot_c_smoke_timing.json "$OUT/" ;;
-    probe) PILOT_MOCK_LLM=1 PILOT_REPO=$REPO "$PM" "$REPO/notebooks/pilot_c_probe/probe.ipynb" "$OUT/probe_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
-        cp /kaggle/working/pilot_c_probe*.json "$OUT/" ;;
+    probe) MOCK_PROBE=1 PILOT_MIN_VALID=${PILOT_MIN_VALID:-2} PILOT_MOCK_LLM=1 PILOT_REPO=$REPO "$PM" "$REPO/notebooks/pilot_c_probe/probe.ipynb" "$OUT/probe_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
+        cp /kaggle/working/pilot_c_probe.json "$OUT/"
+        rm -rf /kaggle/input/notebooks/me/pilot-c-probe && mkdir -p /kaggle/input/notebooks/me/pilot-c-probe
+        cp -r /kaggle/working/private /kaggle/input/notebooks/me/pilot-c-probe/ ;;
+    verify) "$PM" "$REPO/notebooks/pilot_c_probe_verify_cpu/probe_verify_cpu.ipynb" "$OUT/verify_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
+        cp /kaggle/working/pilot_c_probe_verify.json "$OUT/" ;;
   esac
   echo "papermill OK: $nb"
 done

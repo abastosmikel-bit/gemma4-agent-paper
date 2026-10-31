@@ -272,6 +272,8 @@ def _start_mock_server(agent_dir: Path):
     ad = discover_adapters(str(agent_dir), adapter_extensions=ALLOWED_ADAPTER_EXTENSIONS)
 
     class _S:
+        base_url = f"http://127.0.0.1:{srv.server_address[1]}/v1"
+
         def stop(self):
             srv.shutdown()
             srv.server_close()

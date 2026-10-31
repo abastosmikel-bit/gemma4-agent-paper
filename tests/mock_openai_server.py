@@ -73,9 +73,28 @@ class _Handler(BaseHTTPRequestHandler):
         first_user = next((_text(m) for m in msgs if m.get("role") == "user"), "")
         return hashlib.sha1(first_user.encode()).hexdigest()[:10]
 
+    def _render(self, msgs: list[dict], gen: bool) -> str:
+        """Fake chat template with the prefix property of real ones: gen prompt == start of an assistant turn."""
+        out = ""
+        for m in msgs:
+            out += f"<{m.get('role')}>" + _text(m) + json.dumps(m.get("tool_calls") or "") + f"</{m.get('role')}>"
+        if gen:
+            out += "<assistant>"
+        return out
+
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
         req = json.loads(self.rfile.read(n) or b"{}")
+        if self.path.rstrip("/").endswith("/tokenize"):  # vLLM /tokenize (chat form)
+            text = self._render(req.get("messages", []), bool(req.get("add_generation_prompt")))
+            toks = [ord(c) for c in text]
+            return self._send({"tokens": toks, "count": len(toks), "max_model_len": 32768})
+        if self.path.rstrip("/").endswith("/v1/completions"):  # prompt_logprobs scoring
+            prompt = req.get("prompt") or []
+            pl = [None] + [{str(t): {"logprob": -0.1 - (t % 7) / 10, "rank": 1, "decoded_token": ""}} for t in prompt[1:]]
+            return self._send({"id": "cmpl-x", "object": "text_completion", "model": "mock",
+                               "choices": [{"index": 0, "text": "", "prompt_logprobs": pl, "finish_reason": "length"}],
+                               "usage": {"prompt_tokens": len(prompt), "completion_tokens": 1}})
         msgs = req.get("messages", [])
         tools = req.get("tools") or []
         conv = self._conv_id(msgs)
@@ -97,6 +116,22 @@ class _Handler(BaseHTTPRequestHandler):
                              "max_tokens": req.get("max_tokens") or req.get("max_completion_tokens"),
                              "extra": {k: req[k] for k in ("chat_template_kwargs", "thinking_token_budget", "temperature", "top_p") if k in req}})
         item = self.script[step] if step < len(self.script) else None
+        if os.environ.get("MOCK_PROBE"):  # probe dry runs: S-use -> a real (trivial) edit of the file just read
+            last = msgs[-1] if msgs else {}
+            rd = None
+            if last.get("role") == "tool":
+                try:
+                    v = json.loads(_text(last))
+                    v = json.loads(v["result"]) if isinstance(v, dict) and isinstance(v.get("result"), str) else v
+                    rd = v if isinstance(v, dict) and "content" in v and "filepath" in v else None
+                except (ValueError, TypeError, KeyError):
+                    rd = None
+            if rd and rd["content"].strip():
+                first = next(l for l in rd["content"].splitlines() if l.strip())
+                item = {"name": "edit_file", "arguments": {"filepath": rd["filepath"], "old_string": first,
+                                                           "new_string": first + "  # mock edit"}}
+            else:
+                item = {"name": "read_file", "arguments": {"filepath": "README.md"}}
         if item is None:
             message, finish = {"role": "assistant", "content": "Done."}, "stop"
         else:
@@ -119,8 +154,9 @@ class _Handler(BaseHTTPRequestHandler):
                 self.wfile.write(f"data: {json.dumps(c)}\n\n".encode())
             self.wfile.write(b"data: [DONE]\n\n")
             return
+        k = max(1, int(req.get("n") or 1))
         self._send({"id": "chatcmpl-x", "object": "chat.completion", "created": int(time.time()), "model": "mock",
-                    "choices": [{"index": 0, "message": message, "finish_reason": finish}], "usage": usage})
+                    "choices": [{"index": i, "message": message, "finish_reason": finish} for i in range(k)], "usage": usage})
 
 
 def serve(script: list[dict], port: int = 8001) -> ThreadingHTTPServer:

@@ -234,4 +234,22 @@ Malformed or empty depth-2 responses are outcomes, not exclusions.
 
 ## 11. Deviations
 
-(none yet)
+All found during CPU validation and papermill dry runs on 2026-10-31, before any GPU run, so no outcome
+data had been seen.
+
+1. **Reproduction-test rung source (§4.1 L3/T).** Shown as the test patch *as it reads after applying*:
+   context + added lines, no removed lines, per hunk, ≤ 60 lines. The required-test functions' source
+   alone was dropped. Reason: the scorer takes test names from hunk headers, which need not enclose the
+   change. In `rich_3454` the named test is `test_wrong_type`, but the change is to the parametrize data of
+   another test, so the function-source rule gave an empty rung.
+2. **Pure deletions (§4.3).** If `new_string` would be empty, both strings include one neighbouring line
+   as anchor. Without the anchor the edit leaves a stray blank line and does not equal the gold patch
+   (`requests_7315`). After this, the canonical edit equals the gold patch on 9/10 local tasks; the
+   remaining one differs only by its gold changes outside the function, by design.
+3. **S-use context (§3).** The captured `read_file` assistant turn carries no reasoning text, because the
+   capture server emits none. In a real run with `include_thoughts: true` that turn would also contain the
+   model's thoughts.
+4. **Rule 4 (§9).** Implemented as a per-cell check: a cell is skipped if context + target exceeds 28,000
+   tokens; it is reported, not imputed.
+5. **Session safety.** If the API self-check fails on the first size, the session stops instead of
+   starting the other servers.

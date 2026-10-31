@@ -33,7 +33,7 @@ A directory laid out exactly like the competition data:
 | `hints_text` | usually `""` |
 | `created_at` | ISO-8601 |
 
-Hard requirements per task (pilot C's notebook 00 checks 1–2 and writes `pilot_c_gold_check_kaggle.json`):
+Hard requirements per task (`notebooks/C00_gold_check__CPU.ipynb` on `pilot/c-bottleneck` checks 1–2 and writes `C00_gold_check.json`):
 1. the gold patch applies and the required tests pass in the subprocess sandbox;
 2. with **no** patch the same verification fails (otherwise any harmless edit "solves" it);
 3. probe eligibility: exactly one changed non-test `.py` file that exists at `base_commit`; the change
@@ -89,5 +89,5 @@ Rules:
 - The agent contexts (system prompt, tool schema, task prompt with workspace layout, read_file turn) are captured by
   running the real swegemma agent loop against a capture server. So pilot D's tasks must run in the harness
   (Level A + `sandbox/setup.py` compatible).
-- Checks you can run yourself: notebook 00 (validity), then a probe dry run with
-  `tests/papermill_dryrun.sh <your_layout_dir> <venv> <out> 00 probe` on `pilot/c-bottleneck`.
+- Checks you can run yourself: `notebooks/C00_gold_check__CPU.ipynb` (validity), then a probe dry run of `notebooks/C03_probe__L4x4.ipynb` with
+  `tests/papermill_dryrun.sh <your_layout_dir> <venv> <out> C00 C03` on `pilot/c-bottleneck`.

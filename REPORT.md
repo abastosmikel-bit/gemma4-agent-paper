@@ -540,3 +540,58 @@ Files: `results/C03_probe.json` (raw, task IDs and numbers only), `results/C03_t
 - Not built yet: it needs a notebook and a PLAN addendum (no GPU).
 - Cost: ≈ 1.2 L4x4 h (0.6 h if it stops at 15 tasks), hard stop 1.5 h. Per-task 12b agent time is still unmeasured, because `notebooks/C01_smoke_timing__L4x4.ipynb` has not run.
 - The registered predictor, Δ_use(L3−L0), is weak for 12b: median −0.2, IQR −3.3 to +4.5, while L0 rerun noise reaches 5.6 nats. The validation hint (file + function + test names) maps onto Δ_find(L2−L0) (median +25, IQR +19 to +32). Adding it as an exploratory second predictor is the coordinator's decision.
+
+## 16. Follow-up and 12b validation built (2026-11-01; no GPU used)
+
+**Correction to §15:** the GPU total there left out `notebooks/C01_smoke_timing__L4x4.ipynb` (0.84 L4x4 h). The
+coordinator's C01 and C00 results were not in my context after a compaction. I fetched only the two result JSONs from
+the coordinator's Kaggle notebook outputs and committed them (`results/C00_gold_check.json`,
+`results/C01_smoke_timing.json`, e0c8055).
+**GPU used so far: ≈ 4.05 L4x4 h** (C01 0.84, failed C03 0.29, C03 2.92).
+
+**C01 in brief (single run, 3 tasks):**
+- Resolved: e4b 1/3, e4b with all hints 1/3, e2b 0/3, 12b 2/3, 31b 2/3.
+- Mean wall time per task: 142 s, 47 s, 161 s, 465 s and 381 s respectively.
+- Compaction fired in every 12b and 31b task, at tool call 6–14, and always compacted the task prompt.
+- 2 of 15 runs hit the 32k context limit.
+
+**C00 on Kaggle:** 74/129 gold patches resolve; 71 tasks are valid.
+
+**Decisions taken (coordinator, 2026-11-01):**
+- The follow-up runs the core plus both add-ons.
+- H6 gets the S-find L2 gain as an exploratory second predictor.
+- The 12b validation is built and priced from C01's 465 s per task.
+
+**`notebooks/C04_probe_followup__L4x4.ipynb` (PLAN §11 items 10–13):**
+- It reads C03's records, contexts and words from C03's output, so the inputs are identical and no 31b words step is
+  needed.
+- Per size, it runs:
+  - the pre-registered cells C03 did not complete (e2b: all 870 depth-1 cells and 780 samples; 12b: 84 depth-1 cells
+    and 780 samples);
+  - G-null at S-find and S-use (depth 1) and X-graph and G-null at S-find (depth 2), for all four sizes;
+  - the S-use L0/L2/L5/W re-score for 31b, e4b and 12b.
+- Every newly scored cell stores `logp_action` and `logp_args`. Against the real 31b/12b/e4b templates, the action part
+  is `<|tool_call>call:<tool>` plus at most the opening brace (`tests/test_template_scoring.py`).
+- Size order: e2b, 12b, 31b, e4b. Each size writes its own file.
+
+| Size | depth-1 cells (design / re-score / control) | depth-2 samples | L4x4 h (from C03's measured rates and starts) |
+|---|---|---|---|
+| e2b | 870 / 0 / 60 | 840 | 0.80 |
+| 12b | 84 / 108 / 60 | 840 | 0.63 |
+| 31b | 0 / 120 / 60 | 60 | 0.33 |
+| e4b | 0 / 120 / 60 | 60 | 0.18 |
+| setup (install, reload C03 inputs), stops | | | 0.08 |
+| **total** | | | **≈ 2.0 (range 1.7–2.4), hard stop 2.5** |
+
+**`notebooks/C05_validation_12b__L4x4.ipynb` (pre-registered: `docs/PLAN_C05_validation.md`; analysis code
+`pilot_c/analyze_c05.py`, written before the run):**
+- Design: 12b, O0 vs O-all on the 30 probe tasks in C03's order, 1 seed, 40 calls / 15 min, concurrency 5, starter server
+  settings.
+- Stage 1 is the first 15 tasks; the session stops if fewer than 2 tasks change outcome.
+- H6 as registered (Δ_use(L3−L0)). The flip AUC is computed over tasks unresolved at O0; I fixed that operational detail
+  now, before any data. The exploratory second predictor is Δ_find(L2−L0).
+- Estimate, from C01's 12b times and a simulation of 15-task batches at concurrency 5: ≈ 2.0 L4x4 h (range 1.6–2.4),
+  ≈ 1.05 h if stopped after stage 1, hard stop 2.5 h.
+
+**Run order** (`notebooks/README.md`): C04 and C05 each need only C03's output and are independent of each other.
+`notebooks/C03v_test_verify__CPU.ipynb` now runs last and verifies the sampled edits of C03 and, if attached, C04.

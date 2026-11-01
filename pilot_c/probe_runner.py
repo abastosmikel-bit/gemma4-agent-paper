@@ -230,7 +230,7 @@ def build_messages(rec: dict, ctx: dict, state: str, cond: str) -> tuple[list[di
     ui = next(i for i, m in enumerate(base) if m.get("role") == "user")
     method = "none"
     if cond in pb.GRAPH_CONDS:
-        g = rec["graph"] if cond != "X-graph" else rec["wrong"].get("graph")
+        g = {"X-graph": rec["wrong"].get("graph"), "G-null": rec.get("null_graph")}.get(cond, rec["graph"])
         if not g:
             return None
         payload = pb.encode_graph(g["focal"], g["nodes"], g["edges"], pb.GRAPH_CONDS[cond])
@@ -291,8 +291,13 @@ def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> 
     N = _post(f"{root}/tokenize", {**body, "add_generation_prompt": False}, TIMEOUT_TOKENIZE)["tokens"]
     F = _post(f"{root}/tokenize", {**body, "messages": msgs + [target], "add_generation_prompt": False},
               TIMEOUT_TOKENIZE)["tokens"]
+    # The same call with empty arguments: its tokens agree with the target up to the first token that depends on the
+    # arguments. That prefix is the "action" part (take a tool call now, and which tool); the rest is the arguments.
+    F0 = _post(f"{root}/tokenize", {**body, "messages": msgs + [_empty_args(target)], "add_generation_prompt": False},
+               TIMEOUT_TOKENIZE)["tokens"]
     if len(F) > len(P) and F[:len(P)] == P:  # e.g. after a tool response (P == N), or templates without an empty thought
         T, S, mode = F[len(P):], F, "direct"
+        T0 = F0[len(P):]
     elif F[:len(N)] == N and P[:len(N)] == N:
         A, G = F[len(N):], P[len(N):]
         h = _lcp(A, G)
@@ -300,6 +305,7 @@ def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> 
             return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(P)}
         T = A[h:]
         S, mode = P + T, "spliced"
+        T0 = F0[len(N):][h:]
     else:
         return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(P)}
     if len(S) > MAX_CELL_TOKENS:  # PLAN §9 rule 4
@@ -316,8 +322,18 @@ def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> 
         if v is None:
             return {"ok": False, "why": "token-missing", "n_ctx": len(P)}
         lps.append(float(v["logprob"] if isinstance(v, dict) else v))
-    return {"ok": True, "logp": round(sum(lps), 4), "n_tok": len(lps), "mean_logp": round(sum(lps) / len(lps), 5),
-            "n_ctx": len(P), "mode": mode}
+    out = {"ok": True, "logp": round(sum(lps), 4), "n_tok": len(lps), "mean_logp": round(sum(lps) / len(lps), 5),
+           "n_ctx": len(P), "mode": mode}
+    b = _lcp(T, T0)
+    if 0 < b < len(T):
+        out.update({"n_tok_action": b, "logp_action": round(sum(lps[:b]), 4), "logp_args": round(sum(lps[b:]), 4)})
+    return out
+
+
+def _empty_args(target: dict) -> dict:
+    t = copy.deepcopy(target)
+    t["tool_calls"][0]["function"] = {**t["tool_calls"][0]["function"], "arguments": "{}"}
+    return t
 
 
 def sample(root: str, model: str, msgs: list[dict], tools: Any, n: int, seed: int) -> list[dict]:
@@ -355,8 +371,37 @@ def cells_for(rec: dict) -> tuple[list[tuple], list[tuple]]:
     return d1, d2
 
 
+def self_check(root: str, mid: str, size: str, rec: dict, ctx: dict) -> dict:
+    """Score one S-use and one S-find cell and draw one short 2-sample generation; raise if the API path is broken."""
+    try:
+        checks = {}
+        for st in ("use", "find"):
+            m = build_messages(rec, ctx, st, "L0")
+            checks[st] = score(root, mid, m[0], ctx["tools"], m[1])
+        m = build_messages(rec, ctx, "use", "L0")
+        smp = _post(f"{root}/v1/chat/completions", {"model": mid, "messages": m[0], "tools": ctx["tools"],
+                    "n": 2, "seed": 1, **{**AGENT_SAMPLING, "max_tokens": 16}}, TIMEOUT_SAMPLE)
+        checks["sample_choices"] = len(smp.get("choices", []))
+    except Exception as e:  # noqa: BLE001 - any failure here means the API path is broken for this size
+        raise RuntimeError(f"SELFCHECK failed on {size}: {type(e).__name__}: {str(e)[:400]}") from e
+    if not (checks["use"].get("ok") and checks["find"].get("ok") and checks["sample_choices"] == 2):
+        raise RuntimeError(f"SELFCHECK failed on {size}: {checks}")
+    return checks
+
+
 def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], deadline: float, workers: int = 16,
              write_words_here: bool = False) -> dict[str, Any]:
+    """C03: every pre-registered cell (PLAN §4.6) for one size."""
+    usable = [r for r in recs if r["instance_id"] in ctxs]
+    d1 = [(r, st, c, rep, {}) for r in usable for (st, c, rep) in cells_for(r)[0]]
+    d2 = [(r, st, c, n) for r in usable for (st, c, n) in cells_for(r)[1]]
+    return run_cells(server, model_alias, recs, ctxs, deadline, d1, d2, workers, write_words_here=write_words_here)
+
+
+def run_cells(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], deadline: float,
+              d1_cells: list[tuple], d2_cells: list[tuple], workers: int = 16, write_words_here: bool = False,
+              samples_file: str | None = None) -> dict[str, Any]:
+    """Self-check, then depth-1 cells (rec, state, cond, rep, extra-fields) and depth-2 cells (rec, state, cond, n)."""
     root = server_root(server)
     mid = _get(f"{root}/v1/models")["data"][0]["id"]
     size = kr.SHORT[model_alias]
@@ -364,40 +409,24 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
     usable = [r for r in recs if r["instance_id"] in ctxs]
     if not usable:
         raise RuntimeError("SELFCHECK failed: no captured agent contexts (the capture phase produced nothing)")
-    # self-check before spending time: score one S-use and one S-find cell, and draw one short sample
-    r0 = usable[0]
-    try:
-        checks = {}
-        for st in ("use", "find"):
-            m = build_messages(r0, ctxs[r0["instance_id"]], st, "L0")
-            checks[st] = score(root, mid, m[0], ctxs[r0["instance_id"]]["tools"], m[1])
-        m = build_messages(r0, ctxs[r0["instance_id"]], "use", "L0")
-        smp = _post(f"{root}/v1/chat/completions", {"model": mid, "messages": m[0], "tools": ctxs[r0["instance_id"]]["tools"],
-                    "n": 2, "seed": 1, **{**AGENT_SAMPLING, "max_tokens": 16}}, TIMEOUT_SAMPLE)
-        checks["sample_choices"] = len(smp.get("choices", []))
-    except Exception as e:  # noqa: BLE001 - any failure here means the API path is broken for this size
-        raise RuntimeError(f"SELFCHECK failed on {size}: {type(e).__name__}: {str(e)[:400]}") from e
-    out["selfcheck"] = checks
-    if not (checks["use"].get("ok") and checks["find"].get("ok") and checks["sample_choices"] == 2):
-        raise RuntimeError(f"SELFCHECK failed on {size}: {checks}")
+    out["selfcheck"] = self_check(root, mid, size, usable[0], ctxs[usable[0]["instance_id"]])
     if write_words_here:
         out["words_status"] = write_words(root, mid, usable)
         pb.assign_cross_task_controls(usable)
     t0 = time.time()
 
-    def d1_job(rec, st, cond, rep):
+    def d1_job(rec, st, cond, rep, extra):
+        head = {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, **extra}
         if TRIPPED.is_set() or time.time() > deadline:
-            return {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, "ok": False,
-                    "why": "server_frozen" if TRIPPED.is_set() else "time_guard"}
+            return {**head, "ok": False, "why": "server_frozen" if TRIPPED.is_set() else "time_guard"}
         mm = build_messages(rec, ctxs[rec["instance_id"]], st, cond)
         if mm is None:
-            return {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, "ok": False, "why": "unavailable"}
+            return {**head, "ok": False, "why": "unavailable"}
         res = score(root, mid, mm[0], ctxs[rec["instance_id"]]["tools"], mm[1])
-        return {"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "rep": rep, "hint_method": mm[2], **res}
+        return {**head, "hint_method": mm[2], **res}
 
-    jobs = [(rec, st, c, rep) for rec in usable for (st, c, rep) in cells_for(rec)[0]]
     with cf.ThreadPoolExecutor(workers) as ex:
-        futs = [ex.submit(d1_job, *j) for j in jobs]
+        futs = [ex.submit(d1_job, *j) for j in d1_cells if j[0]["instance_id"] in ctxs]
         for f in cf.as_completed(futs):
             try:
                 out["d1"].append(f.result())
@@ -406,6 +435,8 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
                 out["d1"].append({"size": size, "ok": False, "why": why})
     out["d1_minutes"] = round((time.time() - t0) / 60, 2)
     samples_private: list[dict] = []
+    if not d2_cells:
+        return out
     if TRIPPED.is_set():
         out["skipped"].append("depth2 (server frozen)")
         return out
@@ -421,12 +452,15 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
         mm = build_messages(rec, ctxs[rec["instance_id"]], st, cond)
         if mm is None:
             return [], [{"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "ok": False, "why": "unavailable"}]
+        crec = rec
+        if cond == "G-null" and rec.get("null_graph"):  # followed_wrong = went to the unrelated graph's file or symbol
+            crec = {**rec, "wrong": {"file": rec["null_graph"]["file"], "qualname": rec["null_graph"]["qualname"]}}
         rows, priv = [], []
         for k, smp in enumerate(sample(root, mid, mm[0], ctxs[rec["instance_id"]]["tools"], n, seed=1)):
             if st == "find":
-                flags, edited = pb.classify_find(rec, smp["tool_calls"]), None
+                flags, edited = pb.classify_find(crec, smp["tool_calls"]), None
             else:
-                flags, edited = pb.classify_use(rec, smp["tool_calls"])
+                flags, edited = pb.classify_use(crec, smp["tool_calls"])
             rows.append({"task": rec["instance_id"], "size": size, "state": st, "cond": cond, "sample": k, "ok": True,
                          "finish": smp["finish"], **flags})
             if edited is not None:
@@ -435,9 +469,8 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
                 priv.append({"task": rec["instance_id"], "size": size, "cond": cond, "sample": k, "patch": diff})
         return priv, rows
 
-    jobs2 = [(rec, st, c, n) for rec in usable for (st, c, n) in cells_for(rec)[1]]
     with cf.ThreadPoolExecutor(workers) as ex:
-        futs = [ex.submit(d2_job, *j) for j in jobs2]
+        futs = [ex.submit(d2_job, *j) for j in d2_cells if j[0]["instance_id"] in ctxs]
         for f in cf.as_completed(futs):
             try:
                 priv, rows = f.result()
@@ -448,10 +481,55 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
                 out["d2"].append({"size": size, "ok": False, "why": why})
     out["d2_minutes"] = round((time.time() - t1) / 60, 2)
     kr.PRIVATE.mkdir(parents=True, exist_ok=True)
-    with open(kr.PRIVATE / f"probe_samples_{size}.jsonl", "w") as f:
-        for s in samples_private:
-            f.write(json.dumps(s) + "\n")
+    with open(kr.PRIVATE / (samples_file or f"probe_samples_{size}.jsonl"), "w") as f:
+        for s_ in samples_private:
+            f.write(json.dumps(s_) + "\n")
     return out
+
+
+# --------------------------------------------------------------------------- follow-up (notebooks/C04_probe_followup__L4x4.ipynb)
+
+def load_c03_inputs() -> tuple[list[dict], dict[str, dict], dict]:
+    """Records (with the words written by 31b and the cross-task controls), captured contexts and the results of
+    notebooks/C03_probe__L4x4.ipynb, from its attached output. Re-derives the private base text of each gold file."""
+    recs_path = kr.find_input_json("probe_records.jsonl")
+    recs = [json.loads(l) for l in open(recs_path) if l.strip()]
+    ctxs = json.loads((recs_path.parent / "probe_contexts.json").read_text())
+    c03 = json.loads(kr.find_input_json("C03_probe.json").read_text())
+    d = kr.data_dir()
+    for r in recs:
+        texts, _ = pb.snapshot_scan(d / "snapshots" / f"{r['instance_id']}.tgz", {r["gold"]["file"]})
+        r["_base_text"] = texts[r["gold"]["file"]]
+    keep = set(c03["task_ids"])
+    recs = [r for r in recs if r["instance_id"] in keep]
+    return recs, ctxs, c03
+
+
+def followup_cells(size: str, recs: list[dict], c03: dict, rescore_sizes: tuple[str, ...], graph_controls: tuple = pb.FOLLOWUP_D1,
+                   d2_extra: tuple = pb.FOLLOWUP_D2, rescore_use: tuple = pb.RESCORE_USE) -> tuple[list[tuple], list[tuple], dict]:
+    """Cells for one size in the follow-up:
+      design  : every pre-registered C03 cell (PLAN §4.6) that C03 did not complete for this size (time guard, skipped
+                size). 'unavailable' cells stay unavailable.
+      control : G-null at S-find and S-use (depth 1), X-graph and G-null at S-find (depth 2, n=1)  [exploratory]
+      rescore : S-use L0/L2/L5/W again, to split log p into action and arguments (rescore_sizes only) [exploratory]"""
+    done1 = {(r["task"], r["state"], r["cond"], r.get("rep", 1)) for r in c03["d1"]
+             if r.get("size") == size and (r.get("ok") or r.get("why") == "unavailable")}
+    done2 = {(r["task"], r["state"], r["cond"]) for r in c03["d2"]
+             if r.get("size") == size and (r.get("ok") or r.get("why") == "unavailable")}
+    d1, d2, counts = [], [], {"design_d1": 0, "design_d2": 0, "control_d1": 0, "control_d2": 0, "rescore_d1": 0}
+    for r in recs:
+        c1, c2 = cells_for(r)
+        design1 = [(st, c, rep) for (st, c, rep) in c1 if (r["instance_id"], st, c, rep) not in done1]
+        d1 += [(r, st, c, rep, {"purpose": "design"}) for (st, c, rep) in design1]
+        d1 += [(r, st, c, 1, {"purpose": "control"}) for (st, c) in graph_controls]
+        if size in rescore_sizes:
+            d1 += [(r, "use", c, 1, {"purpose": "rescore"}) for c in rescore_use if ("use", c, 1) not in design1]
+        d2 += [(r, st, c, n) for (st, c, n) in c2 if (r["instance_id"], st, c) not in done2]
+        d2 += [(r, st, c, 1) for (st, c) in d2_extra]
+    for x in d1:
+        counts[f"{x[4]['purpose']}_d1"] += 1
+    counts["d2_cells"] = len(d2)
+    return d1, d2, counts
 
 
 def summarize(d1: list[dict], d2: list[dict]) -> dict[str, Any]:
@@ -519,7 +597,8 @@ def verify_samples(records_path: Path, sample_files: list[Path], out_path: Path,
                     cache[key] = bool(r.resolved) and bool(s["patch"].strip())
                 except Exception:  # noqa: BLE001
                     cache[key] = False
-            rows.append({"task": s["task"], "size": s["size"], "cond": s["cond"], "sample": s["sample"], "solves": cache[key]})
+            rows.append({"task": s["task"], "size": s["size"], "cond": s["cond"], "sample": s["sample"], "solves": cache[key],
+                         "source": "C04" if "_C04_" in sf.name else "C03"})
             out_path.write_text(json.dumps({"rows": rows}, indent=1))
     summ: dict[str, Any] = {}
     for r in rows:

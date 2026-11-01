@@ -37,6 +37,8 @@ def env_steps(sp: dict) -> list[str]:
     acc = "None" if sp["accelerator"].startswith("None") else "GPU L4 x4"
     up = (f"Add input → Your Work → Notebooks → `{SPECS[sp['upstream']]['file'][:-6]}` (its output)."
           if sp["upstream"] else "No earlier notebook output is needed.")
+    if sp.get("also_attach"):
+        up += f" If it has run, also `{SPECS[sp['also_attach']]['file'][:-6]}` (its output)."
     models = ("Keep the four Gemma 4 models that came with the copy." if acc != "None"
               else "The Gemma 4 models that came with the copy are not needed (you can remove them).")
     return [
@@ -91,13 +93,34 @@ SPECS = {
             "what": "Information-ladder probe (pre-registered: docs/PLAN.md, frozen at 168d115). Captures the agent's "
                     "exact contexts with the real harness loop, then for 31b, e4b, 12b, e2b scores the log-likelihood "
                     "of the correct action under each rung and samples one next action."},
+    "C04": {"file": "C04_probe_followup__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE, GEMMA], "upstream": "C03",
+            "upstream_file": "C03_probe.json + private/probe_records.jsonl + private/probe_contexts.json",
+            "time": "≈ 2.0 L4x4 h (range 1.7–2.4; hard stop 2.5 h)",
+            "output": "C04_probe_followup.json", "extra_output": "C04_probe_followup_e2b.json, C04_probe_followup_12b.json, C04_probe_followup_31b.json, C04_probe_followup_e4b.json (one per size; each is complete on its own)",
+            "what": "Follow-up to the probe, on the same 30 tasks, contexts and words as C03 (read from its output). Runs the "
+                    "pre-registered cells C03 did not reach (e2b at both depths, 12b depth 2 and 3 tasks of 12b depth 1) and, "
+                    "as exploratory additions (docs/PLAN.md §11 items 10–13): X-graph at depth 2, the unrelated-file graph "
+                    "control G-null, and a split of each target's log-likelihood into the action part (call this tool now) "
+                    "and the arguments, re-scoring S-use L0/L2/L5/W for 31b, e4b, 12b."},
+    "C05": {"file": "C05_validation_12b__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE, "model `google/gemma-4` → Other → `gemma-4-12b-it-qat-w4a16-ct` (version 2; the other three that come with the starter copy are unused)"],
+            "upstream": "C03", "upstream_file": "C03_probe.json (the 30 probe tasks, in order)",
+            "time": "≈ 2.0 L4x4 h (range 1.6–2.4; ≈ 1.0 h if the sequential rule stops it after 15 tasks; hard stop 2.5 h)",
+            "output": "C05_validation_12b.json",
+            "what": "12b rollout validation (pre-registered: docs/PLAN_C05_validation.md). The official sample agent "
+                    "(adapters removed, 40 calls / 15 min, concurrency 5) runs the 30 probe tasks with no hint (O0) and with "
+                    "file + function + test names (O-all), 1 seed each, first on 15 tasks; it stops there if fewer than 2 "
+                    "tasks change outcome. Records resolved per task (scorer rule: non-empty patch) and the common metrics."},
     "C03v": {"file": "C03v_test_verify__CPU.ipynb", "accelerator": "None (CPU)", "internet": "Off",
              "inputs": [COMPETITION, WHEELHOUSE], "upstream": "C03",
              "upstream_file": "private/probe_records.jsonl + private/probe_samples_*.jsonl",
+             "also_attach": "C04",
              "time": "≈ 2–4 h CPU (each distinct sampled edit is verified once); 0 GPU h",
              "output": "C03v_test_verify.json",
              "what": "Applies each edit sampled by C03 alone to the base snapshot and runs the required tests with the "
-                     "scorer's verification path."},
+                     "scorer's verification path. If `notebooks/C04_probe_followup__L4x4.ipynb` has run, attach its output too: "
+                     "its sampled edits are verified in the same pass."},
 }
 
 
@@ -106,6 +129,9 @@ def first_cell(key: str) -> dict:
     up = (f"**the output of `notebooks/{SPECS[sp['upstream']]['file']}`** (Add input → Your Work → Notebooks → "
           f"`{SPECS[sp['upstream']]['file'][:-6]}`; it provides `{sp['upstream_file']}`). Run that notebook first."
           if sp["upstream"] else "none (this notebook runs first).")
+    if sp.get("also_attach"):
+        up += (f" If `notebooks/{SPECS[sp['also_attach']]['file']}` has run, also attach its output "
+               f"(`{SPECS[sp['also_attach']]['file'][:-6]}`).")
     lines = [f"# {sp['file'][:-6]} — Pilot C", "", sp["what"], "",
              f"- **Accelerator:** {sp['accelerator']}",
              f"- **Internet:** {sp['internet']}",
@@ -146,15 +172,24 @@ def readme() -> str:
     rows = []
     for i, (k, sp) in enumerate(SPECS.items(), 1):
         up = f"`notebooks/{SPECS[sp['upstream']]['file']}` → `{sp['upstream_file']}`" if sp["upstream"] else "—"
+        if sp.get("also_attach"):
+            up += f"; also `notebooks/{SPECS[sp['also_attach']]['file']}` if it has run"
         rows.append(f"| {i} | `notebooks/{sp['file']}` | {sp['accelerator']} | {sp['internet']} | "
                     + "; ".join(sp["inputs"]) + f" | {up} | {sp['time']} | `results/{sp['output']}`"
                     + (" + per-size files" if sp.get("extra_output") else "") + " |")
     tail = ["", "`notebooks/C01_smoke_timing__L4x4.ipynb` and `notebooks/C03_probe__L4x4.ipynb` both need only the output of "
-            "`notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other.", "",
+            "`notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other. "
+            "`notebooks/C04_probe_followup__L4x4.ipynb` and `notebooks/C05_validation_12b__L4x4.ipynb` both need only the output "
+            "of `notebooks/C03_probe__L4x4.ipynb`; they are independent of each other. "
+            "`notebooks/C03v_test_verify__CPU.ipynb` (CPU) runs last so it can verify the edits of both C03 and C04.", "",
+            "**Status:** done on Kaggle: `notebooks/C00_gold_check__CPU.ipynb` and `notebooks/C01_smoke_timing__L4x4.ipynb` "
+            "(2026-10-31), `notebooks/C03_probe__L4x4.ipynb` (2026-11-01). Next: `notebooks/C04_probe_followup__L4x4.ipynb` and "
+            "`notebooks/C05_validation_12b__L4x4.ipynb` (GPU; each needs the coordinator's OK on its estimate), then "
+            "`notebooks/C03v_test_verify__CPU.ipynb`.", "",
             "When a notebook finishes, download the output file named in the table and commit it to `results/`.", "",
             "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off, under Python 3.12 "
             "and with the real wheel install from the full wheelhouse: "
-            "`tests/papermill_dryrun.sh <local_comp> <py3.12 venv> <out> C00 C01 C03 C03v` (WHEELHOUSE=<dir of the 41 wheels>).", "",
+            "`tests/papermill_dryrun.sh <local_comp> <py3.12 venv> <out> C00 C01 C03 C04 C05 C03v` (WHEELHOUSE=<dir of the 41 wheels>).", "",
             "Data rule: everything under `/kaggle/working/private/` (task copies, gold locations, captured contexts, probe "
             "records, sampled edits, traces) is competition-derived. Leave it on Kaggle. Commit only the output files above "
             "(task IDs, numbers, flags).", ""]
@@ -460,10 +495,216 @@ print(json.dumps({k: v for k, v in summary['summary'].items() if '/use/' in k an
 VERIFY_RUN = """
 from pilot_c import probe_runner as pr
 recs_path = kr.find_input_json('probe_records.jsonl')
-sample_files = sorted(recs_path.parent.glob('probe_samples_*.jsonl'))
+_seen, sample_files = set(), []   # sampled edits of C03 and, if its output is attached, C04
+for p in sorted(Path(os.environ.get('PILOT_INPUT_ROOT', '/kaggle/input')).glob('**/private/probe_samples_*.jsonl')):
+    if p.name not in _seen:
+        _seen.add(p.name); sample_files.append(p)
 print('records', recs_path, 'samples', [p.name for p in sample_files])
 res = pr.verify_samples(recs_path, sample_files, Path('/kaggle/working/C03v_test_verify.json'))
 print(json.dumps(res['summary'], indent=1))
+"""
+
+
+PRECHECK_03 = """
+import os, sys, json
+sys.path.insert(0, '/kaggle/working/pilot')
+from pilot_c import kaggle_runner as kr
+_c03 = json.loads(kr.find_input_json('C03_probe.json').read_text())   # fails fast if C03's output is not attached
+assert len(_c03['task_ids']) >= int(os.environ.get('PILOT_MIN_TASKS', 20)), f"C03 probed only {len(_c03['task_ids'])} tasks"
+{extra}
+print('C03 output OK:', len(_c03['task_ids']), 'tasks; plan', _c03['plan_commit'][:7])
+"""
+
+FOLLOWUP_CONFIG = """
+# ---- configuration (only edit here) — docs/PLAN.md (frozen at 168d115) + §11 items 10-13 (exploratory additions)
+PLAN_COMMIT = '168d11573bf20003435e4b4a1874cfaebddd0ce1'
+# Order: e2b first (the size C03 never reached), then 12b (depth 2), then 31b and e4b (controls and re-scores only).
+# A time guard skips the tail. Each size's results are saved on their own (C04_probe_followup_<size>.json).
+SIZES = ['gemma-4-e2b-it-qat-w4a16-ct', 'gemma-4-12b-it-qat-w4a16-ct', 'gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct']
+RESCORE_SIZES = ('31b', 'e4b', '12b')            # S-use L0/L2/L5/W re-scored with the action/arguments split
+GRAPH_CONTROLS = (('find', 'G-null'), ('use', 'G-null'))          # depth 1, every size
+D2_EXTRA = (('find', 'X-graph'), ('find', 'G-null'))              # depth 2 (n=1), every size
+PROBE_GPU_UTIL = 0.75                            # same probe-server settings as C03 (PLAN §11, deviation 7)
+PROBE_VLLM_ARGS = ('--max-num-batched-tokens', '1024')
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)
+MAX_SESSION_HOURS = 2.5
+WORKERS = 16
+"""
+
+FOLLOWUP_RUN = """
+from pilot_c import probe_runner as pr
+from pilot_c import probe as pb
+from common import server_watchdog as wd
+OUT = Path('/kaggle/working/C04_probe_followup.json')
+recs, ctxs, c03 = pr.load_c03_inputs()          # same tasks, records (with 31b's words), contexts as C03
+pb.assign_null_graphs(recs)
+summary = {'pilot': 'C', 'notebook': 'notebooks/C04_probe_followup__L4x4.ipynb', 'plan_commit': PLAN_COMMIT,
+           'plan_additions': 'docs/PLAN.md §11 items 10-13', 'env': kr.env_info(), 'task_ids': [r['instance_id'] for r in recs],
+           'c03_plan_commit': c03['plan_commit'], 'sizes': [], 'd1': [], 'd2': [], 'freezes': [], 'stopped': None,
+           'null_controls': {r['instance_id']: {k: r['null_graph'][k] for k in ('from', 'len_ratio', 'within_tol')}
+                             for r in recs if r.get('null_graph')},
+           'contexts_missing': [r['instance_id'] for r in recs if r['instance_id'] not in ctxs]}
+assert recs and not summary['contexts_missing'], 'C03 records/contexts incomplete: stopping before any GPU work'
+def save():
+    summary['summary'] = pr.summarize(summary['d1'], summary['d2'])
+    summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
+    OUT.write_text(json.dumps(summary, indent=1)); print('saved', OUT, summary['session_elapsed_h'], 'h')
+save()
+deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
+MAX_FREEZES, selfcheck_fail_streak = 2, 0
+for model in SIZES:
+    size = kr.SHORT[model]
+    d1_cells, d2_cells, counts = pr.followup_cells(size, recs, c03, RESCORE_SIZES, GRAPH_CONTROLS, D2_EXTRA)
+    print(f'[{size}] cells planned:', counts)
+    if summary['stopped'] or time.time() > deadline - 600:
+        summary['sizes'].append({'model': model, 'size': size, 'planned': counts, 'skipped': summary['stopped'] or 'session time guard'}); continue
+    res, startup, server, dog = {'size': size, 'd1': [], 'd2': []}, None, None, None
+    try:
+        wd.reset()
+        agent_dir = kr.prepare_agent_dir(model, BUDGET)
+        server, models, adapters, startup = kr.start_server(agent_dir, gpu_memory_utilization=PROBE_GPU_UTIL,
+                                                            extra_args=PROBE_VLLM_ARGS)
+        dog = wd.Watchdog(kr.server_root(server), lambda srv=server, tag=size: kr.stop_server(srv, tag=tag))
+        dog.start()
+        res = pr.run_cells(server, model, recs, ctxs, deadline, d1_cells, d2_cells, WORKERS,
+                           samples_file=f'probe_samples_C04_{size}.jsonl')
+    except kr.GpuMemoryNotReleased as e:
+        res['error'] = f'GpuMemoryNotReleased: {e}'
+        summary['stopped'] = 'GPU memory was not released by a stopped server'
+    except Exception as e:
+        res['error'] = f'{type(e).__name__}: {str(e)[:600]}'
+    finally:
+        if dog is not None:
+            dog.stop()
+        if server is not None:
+            res['stop'] = kr.stop_server(server, tag=size)
+        res['server_error_kinds'] = kr.error_kinds(kr.LAST_SERVER_ERRORS)
+        if kr.LAST_SERVER_ERRORS and res.get('error'):
+            print(f'[{size}] server log errors (full log in private/server_logs/):', *kr.LAST_SERVER_ERRORS[-8:], sep='\\n  ')
+    if wd.TRIPPED.is_set():
+        res['server_frozen'] = True
+        summary['freezes'].append({'model': model, **wd.state()})
+        if len(summary['freezes']) >= MAX_FREEZES:
+            summary['stopped'] = 'second inference-server freeze'
+    selfcheck_fail_streak = selfcheck_fail_streak + 1 if 'SELFCHECK' in str(res.get('error', '')) else 0
+    if selfcheck_fail_streak >= 2:
+        summary['stopped'] = 'API self-check failed on two sizes in a row'
+    d1, d2 = res.pop('d1'), res.pop('d2')
+    entry = {'model': model, 'startup_s': round(startup, 1) if startup else None, 'planned': counts, **res}
+    Path(f'/kaggle/working/C04_probe_followup_{size}.json').write_text(json.dumps(
+        {'pilot': 'C', 'notebook': 'notebooks/C04_probe_followup__L4x4.ipynb', 'plan_commit': PLAN_COMMIT, 'size': size,
+         'task_ids': summary['task_ids'], 'entry': entry, 'd1': d1, 'd2': d2, 'summary': pr.summarize(d1, d2)}, indent=1))
+    summary['d1'] += d1; summary['d2'] += d2
+    summary['sizes'].append(entry)
+    save()
+    if res.get('error'):
+        print(f'[{size}] FAILED: {res["error"][:300]}')
+save()
+print('L4x4 hours used by this session (wall clock):', summary['session_elapsed_h'], '| freezes:', len(summary['freezes']),
+      '| stopped:', summary['stopped'])
+"""
+
+VALIDATION_CONFIG = """
+# ---- configuration (only edit here) — pre-registered in docs/PLAN_C05_validation.md
+C03 = json.loads(kr.find_input_json('C03_probe.json').read_text())   # output of notebooks/C03_probe__L4x4.ipynb
+TASKS = C03['task_ids']                       # the probe tasks, in their pre-registered order
+MODEL = 'gemma-4-12b-it-qat-w4a16-ct'
+CONDITIONS = ['O0', 'O-all']                  # no hint vs file + function + test names (pilot_c/hints.py)
+N_STAGE1 = int(os.environ.get('PILOT_C05_STAGE1_N', 15))
+STAGES = [TASKS[:N_STAGE1], TASKS[N_STAGE1:]]
+MIN_DISCORDANT_STAGE1 = int(os.environ.get('PILOT_C05_MIN_DISCORDANT', 2))   # sequential rule (PLAN §8)
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # same agent config as C01 and C03's capture
+CONCURRENCY = 5
+SEC_PER_TASK = 465                            # 12b mean wall time per task in notebooks/C01_smoke_timing__L4x4.ipynb
+MAX_SESSION_HOURS = 2.5                       # hard stop: a stage starts only if both its batches fit before it
+print(len(TASKS), 'tasks; stage sizes', [len(s) for s in STAGES])
+"""
+
+VALIDATION_LOOP = """
+# ---- 12b validation: one vLLM server (starter settings), conditions run as separate Evaluator batches per stage.
+# Freeze protection (common/server_watchdog.py): per-request timeouts + a /health watchdog that kills a frozen
+# server; the next batch gets a restarted server; the session stops after the second freeze.
+from common import server_watchdog as wd
+from common.metrics import paired_flips
+out = Path('/kaggle/working/C05_validation_12b.json')
+summary = {'pilot': 'C', 'notebook': 'notebooks/C05_validation_12b__L4x4.ipynb', 'plan': 'docs/PLAN_C05_validation.md',
+           'env': kr.env_info(), 'budget': BUDGET, 'task_ids': TASKS, 'model': MODEL, 'conditions': CONDITIONS,
+           'concurrency': CONCURRENCY, 'stages': [], 'runs': [], 'servers': [], 'freezes': [], 'restarts': 0, 'stopped': None}
+assert TASKS, 'no tasks - stopping before any GPU work'
+gold = kr.build_gold(TASKS)
+MAX_FREEZES = 2
+
+def save():
+    by = {c: [row for r in summary['runs'] if r['condition'] == c for row in r['rows']] for c in CONDITIONS}
+    summary['paired_all'] = paired_flips(by['O0'], by['O-all'])
+    summary['per_task'] = {t: {c: next((bool(x['resolved']) for x in by[c] if x['instance_id'] == t), None) for c in CONDITIONS}
+                           for t in TASKS}
+    summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
+    summary['saved_utc'] = time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime())
+    out.write_text(json.dumps(summary, indent=1)); print('saved', out, summary['session_elapsed_h'], 'h')
+
+def start_watched():
+    wd.reset()
+    agent_dir = kr.prepare_agent_dir(MODEL, BUDGET)
+    server, models, adapters, startup = kr.start_server(agent_dir)   # starter settings (gpu_memory_utilization 0.90)
+    dog = wd.Watchdog(kr.server_root(server), lambda srv=server: kr.stop_server(srv, tag='12b'))
+    dog.start()
+    summary['servers'].append({'model': MODEL, 'startup_s': round(startup, 1)})
+    return agent_dir, server, models, adapters, dog
+
+server = dog = None
+try:
+    agent_dir, server, models, adapters, dog = start_watched()
+    summary['agent'] = kr.describe_agent(agent_dir)
+    for si, stage_tasks in enumerate(STAGES, 1):
+        need_h = 2 * len(stage_tasks) * SEC_PER_TASK / CONCURRENCY / 3600 * 1.3
+        if not stage_tasks:
+            continue
+        if summary['stopped'] or (time.time() - SESSION_T0) / 3600 + need_h > MAX_SESSION_HOURS:
+            summary['stages'].append({'stage': si, 'tasks': stage_tasks, 'skipped': summary['stopped'] or
+                                      f'session time guard (needs ~{need_h:.2f} h)'}); continue
+        stage_rows = {}
+        for cond in CONDITIONS:
+            if wd.TRIPPED.is_set():   # the previous batch froze the server: restart it for this one
+                dog.stop(); kr.stop_server(server, tag='12b')
+                agent_dir, server, models, adapters, dog = start_watched()
+                summary['restarts'] += 1
+            run = kr.run_condition(agent_dir, models, adapters, stage_tasks, gold, cond, 1, CONCURRENCY, tag=f's{si}')
+            run['stage'] = si
+            if wd.TRIPPED.is_set():
+                run['server_frozen'] = True
+                summary['freezes'].append({'stage': si, 'condition': cond, **wd.state()})
+                if len(summary['freezes']) >= MAX_FREEZES:
+                    summary['stopped'] = 'second inference-server freeze'
+            summary['runs'].append(run); stage_rows[cond] = run['rows']
+            agg = run['aggregate']
+            if not wd.TRIPPED.is_set() and agg['n_tasks'] and agg['errors'] == agg['n_tasks'] and not agg['tool_calls_mean']:
+                summary['stopped'] = 'every task failed without a single tool call (agent cannot reach the model)'
+            save()
+            if summary['stopped']:
+                break
+        if len(stage_rows) == len(CONDITIONS):
+            pf = paired_flips(stage_rows['O0'], stage_rows['O-all'])
+            st = {'stage': si, 'tasks': stage_tasks, **pf, 'discordant': pf['b_only'] + pf['a_only']}
+            summary['stages'].append(st)
+            if si == 1 and st['discordant'] < MIN_DISCORDANT_STAGE1:
+                summary['stopped'] = (f'sequential rule: {st["discordant"]} discordant task(s) in the first '
+                                      f'{len(stage_tasks)} (< {MIN_DISCORDANT_STAGE1})')
+        save()
+except kr.GpuMemoryNotReleased as e:
+    summary['stopped'] = f'GPU memory was not released: {e}'
+except Exception as e:
+    summary['stopped'] = f'{type(e).__name__}: {str(e)[:400]}'
+    summary['server_error_kinds'] = kr.error_kinds(kr.LAST_SERVER_ERRORS)
+finally:
+    if dog is not None:
+        dog.stop()
+    if server is not None and summary['servers']:
+        summary['servers'][-1]['stop'] = kr.stop_server(server, tag='12b')
+    save()
+print('L4x4 hours used by this session (wall clock):', summary['session_elapsed_h'], '| stages:',
+      [(s['stage'], s.get('discordant', s.get('skipped'))) for s in summary['stages']], '| stopped:', summary['stopped'])
+print('paired O-all vs O0 over all run tasks:', summary['paired_all'])
 """
 
 
@@ -489,6 +730,28 @@ def probe_verify_nb() -> tuple[dict, str]:
     return _nb(cells), SPECS["C03v"]["file"]
 
 
+def followup_nb() -> tuple[dict, str]:
+    cells = [first_cell("C04")]
+    cells += code_cells()
+    cells.append(code(PRECHECK_03.replace("{extra}", "kr.find_input_json('probe_records.jsonl'); kr.find_input_json('probe_contexts.json')")))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
+    cells.append(code(FOLLOWUP_CONFIG))
+    cells.append(code(FOLLOWUP_RUN))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C04"]["output"])))
+    return _nb(cells), SPECS["C04"]["file"]
+
+
+def validation_nb() -> tuple[dict, str]:
+    cells = [first_cell("C05")]
+    cells += code_cells()
+    cells.append(code(PRECHECK_03.replace("{extra}", "")))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
+    cells.append(code(VALIDATION_CONFIG))
+    cells.append(code(VALIDATION_LOOP))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C05"]["output"])))
+    return _nb(cells), SPECS["C05"]["file"]
+
+
 def _nb(cells: list[dict]) -> dict:
     for i, c in enumerate(cells):
         c["id"] = f"cell-{i:03d}"  # nbformat >= 4.5 requires cell ids
@@ -498,7 +761,7 @@ def _nb(cells: list[dict]) -> dict:
 
 def main() -> None:
     out = ROOT / "notebooks"
-    for build in (gold_check_nb, smoke_nb, probe_nb, probe_verify_nb):
+    for build in (gold_check_nb, smoke_nb, probe_nb, followup_nb, validation_nb, probe_verify_nb):
         nb, fname = build()
         src = "".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%"))
         for i, c in enumerate(nb["cells"]):  # every generated code cell must at least parse

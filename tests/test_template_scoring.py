@@ -50,7 +50,13 @@ def test_target_tokens_are_exactly_the_call(size, expect_find_mode):
             r = pr.score("http://x", "m", msgs, ctxs[rec["instance_id"]]["tools"], target)
             assert r["ok"], (size, st, cond, r)
             text = tok.decode(last["S"][-r["n_tok"]:])
-            assert text.startswith("<|tool_call>call:" + ("read_file" if st == "find" else "edit_file")), text[:60]
+            name = "read_file" if st == "find" else "edit_file"
+            assert text.startswith("<|tool_call>call:" + name), text[:60]
+            # action/arguments split: the action part is the call header up to the first argument-dependent token
+            assert 0 < r["n_tok_action"] < r["n_tok"], r
+            act = tok.decode(last["S"][-r["n_tok"]:][:r["n_tok_action"]])
+            assert act.startswith("<|tool_call>call:" + name) and len(act) <= len("<|tool_call>call:" + name) + 2, act
+            assert abs(r["logp_action"] + r["logp_args"] - r["logp"]) < 1e-3
             if (st, cond) == ("find", "L0"):
                 assert r["mode"] == expect_find_mode
             if st == "use":

@@ -566,11 +566,11 @@ def _markers_for(g: dict) -> list[str]:
 
 
 def run_condition(agent_dir: Path, models, adapters, task_ids: list[str], gold: dict[str, dict], condition: str,
-                  replicate: int, concurrency: int) -> dict[str, Any]:
+                  replicate: int, concurrency: int, tag: str = "") -> dict[str, Any]:
     from swegemma.evaluate import Evaluator
     model_short = agent_dir.name.replace("agent_", "")
     tasks_path = write_task_copy(task_ids, gold, condition)
-    rdir = PRIVATE / "runs" / model_short / f"{condition}_r{replicate}"
+    rdir = PRIVATE / "runs" / model_short / (f"{condition}_r{replicate}" + (f"_{tag}" if tag else ""))
     if rdir.exists():
         shutil.rmtree(rdir)
     rdir.mkdir(parents=True)
@@ -733,7 +733,9 @@ def find_input_json(name: str) -> Path:
     hits = sorted(glob.glob(f"{root}/**/{name}", recursive=True))
     if not hits:
         producer = {"C00_gold_check.json": "notebooks/C00_gold_check__CPU.ipynb",
-                    "probe_records.jsonl": "notebooks/C03_probe__L4x4.ipynb"}.get(name, "the notebook that writes it")
+                    "probe_records.jsonl": "notebooks/C03_probe__L4x4.ipynb",
+                    "probe_contexts.json": "notebooks/C03_probe__L4x4.ipynb",
+                    "C03_probe.json": "notebooks/C03_probe__L4x4.ipynb"}.get(name, "the notebook that writes it")
         raise FileNotFoundError(f"{name} not found under {root}: attach the output of {producer} as an input first "
                                 "(see notebooks/README.md)")
     return Path(hits[0])

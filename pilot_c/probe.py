@@ -25,7 +25,13 @@ USE_CONDS = ("L0", "L1", "L2", "L3", "L4", "L5", "T", "W", "G-json", "G-edges", 
              "X-file", "X-func", "X-graph", "X-test", "X-words")
 D2_FIND = ("L0", "L1", "L2", "G-json", "G-edges", "X-func")
 D2_USE = ("L0", "L2", "L3", "L4", "L5", "T", "W", "G-json", "X-func", "X-test")
-GRAPH_CONDS = {"G-json": "json", "G-edges": "edges", "G-adj": "adj", "X-graph": "json"}
+GRAPH_CONDS = {"G-json": "json", "G-edges": "edges", "G-adj": "adj", "X-graph": "json", "G-null": "json"}
+# Follow-up (notebooks/C04_probe_followup__L4x4.ipynb, PLAN §11 items 10-13; exploratory, added after C03's results):
+# G-null = a graph turn in the same format as G-json whose nodes are all in another file (another task's gold subgraph,
+# same repo, length-matched), so it carries the tool-response ending without this task's location.
+FOLLOWUP_D1 = (("find", "G-null"), ("use", "G-null"))
+FOLLOWUP_D2 = (("find", "X-graph"), ("find", "G-null"))
+RESCORE_USE = ("L0", "L2", "L5", "W")
 WORDS_CONDS = {"L4", "L5", "W", "X-words"}
 
 
@@ -376,6 +382,32 @@ def assign_cross_task_controls(records: list[dict]) -> None:
             if pick:
                 d, ratio = pick
                 rec["wrong"].update({"words_from": d["instance_id"], "words": d["words"], "words_len_ratio": ratio})
+
+
+def assign_null_graphs(records: list[dict], tol: float = 0.15) -> None:
+    """G-null donors: another record's gold subgraph (same repo if possible) with no node in this task's gold module
+    and a different gold file; the closest JSON length to this task's G-json wins (ties by task id). Sets
+    rec["null_graph"] = {focal, nodes, edges, from, file, qualname, len_ratio, within_tol}."""
+    for rec in records:
+        g = rec.get("graph")
+        if not g:
+            continue
+        mod = module_path(rec["gold"]["file"])
+        target_len = len(encode_graph(g["focal"], g["nodes"], g["edges"], "json"))
+
+        def unrelated(d: dict) -> bool:
+            dg = d.get("graph") or {}
+            nodes = [dg.get("focal", "")] + list(dg.get("nodes") or [])
+            return (d["instance_id"] != rec["instance_id"] and d["gold"]["file"] != rec["gold"]["file"] and bool(dg)
+                    and not any(n == mod or n.startswith(mod + ".") for n in nodes if mod))
+        pool = [d for d in records if d["repo"] == rec["repo"] and unrelated(d)] or [d for d in records if unrelated(d)]
+        pick = _closest(target_len, [(d["instance_id"], d) for d in pool],
+                        lambda d: encode_graph(d["graph"]["focal"], d["graph"]["nodes"], d["graph"]["edges"], "json"))
+        if pick:
+            d, ratio = pick
+            rec["null_graph"] = {"focal": d["graph"]["focal"], "nodes": d["graph"]["nodes"], "edges": d["graph"]["edges"],
+                                 "from": d["instance_id"], "file": d["gold"]["file"], "qualname": d["gold"]["qualname"],
+                                 "len_ratio": ratio, "within_tol": abs(ratio - 1) <= tol}
 
 
 # --------------------------------------------------------------------------- words rung

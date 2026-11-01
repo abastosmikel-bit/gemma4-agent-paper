@@ -76,3 +76,24 @@ def test_classify_find_and_use():
     u, _ = classify_use(_rec(), call("edit_file", {"filepath": "m.py", "old_string": "    return 3", "new_string": "    return 4"}))
     assert u["applies"] and not u["on_target"] and not u["exact"]
     assert classify_use(_rec(), [])[0]["tool_call"] is False
+
+
+def test_null_graph_donor_is_unrelated_and_length_matched():
+    from pilot_c.probe import assign_null_graphs, encode_graph
+
+    def rec(iid, repo, path, focal, nodes):
+        return {"instance_id": iid, "repo": repo, "gold": {"file": path, "qualname": focal.split(".")[-1]},
+                "graph": {"focal": focal, "nodes": nodes, "edges": []}}
+    recs = [rec("a", "r", "pkg/core.py", "pkg.core.f", ["pkg.core.f", "pkg.util.h"]),
+            rec("b", "r", "pkg/util.py", "pkg.util.g", ["pkg.util.g", "pkg.core.f"]),       # touches pkg.core: excluded for a
+            rec("c", "r", "pkg/io.py", "pkg.io.read", ["pkg.io.read", "pkg.io.write"]),
+            rec("d", "r", "pkg/io2.py", "pkg.io2.x", ["pkg.io2.x"]),
+            rec("e", "other", "q/z.py", "q.z.k", ["q.z.k", "q.z.l"])]
+    assign_null_graphs(recs)
+    a = recs[0]["null_graph"]
+    assert a["from"] in ("c", "d") and a["file"] != "pkg/core.py"
+    assert not any(n.startswith("pkg.core") for n in [a["focal"]] + a["nodes"])
+    la = len(encode_graph("pkg.core.f", ["pkg.core.f", "pkg.util.h"], [], "json"))
+    lc = len(encode_graph("pkg.io.read", ["pkg.io.read", "pkg.io.write"], [], "json"))
+    assert a["from"] == "c" and a["len_ratio"] == round(lc / la, 3)
+    assert recs[4]["null_graph"]["from"] in ("a", "b", "c", "d")   # no same-repo donor: falls back to any repo

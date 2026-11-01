@@ -282,3 +282,32 @@ data had been seen.
      second server freeze, or GPU memory not being released.
    - The size order stays 31b → e4b → 12b → e2b: one server start per size, and 31b first because it writes the
      words rung.
+
+**Added 2026-11-01, after the C03 results were seen** (`results/C03_probe.json`, `results/C03_tables.md`). Items 10–13
+describe `notebooks/C04_probe_followup__L4x4.ipynb`. Item 10 completes the frozen design; items 11–13 are exploratory
+additions, labelled as such in every table, and do not change H1–H6.
+
+10. **Completing the design in a second session.** C03's time guard skipped e2b, 12b depth 2, and 12b depth 1 for 3
+    tasks. C04 runs exactly those cells, with the frozen definitions.
+    - It reuses C03's records, captured contexts, and the change-in-words rung that 31b wrote in C03, read from C03's
+      output. So every size sees byte-identical inputs, and 31b does not rewrite the words.
+    - Server settings are as in deviation 7. Cells C03 completed are not rerun.
+11. **X-graph at depth 2 (exploratory).** S-find, n = 1, all four sizes. It answers whether the graph's focus changes
+    where the model reads (`hit_func`), next to G-json's existing depth-2 cells.
+12. **G-null, an unrelated-file graph control (exploratory).**
+    - Content: the same synthetic `get_code_subgraph` turn and JSON encoding as G-json, carrying another probe task's
+      gold subgraph. The donor is from the same repo if possible. None of its nodes may lie in this task's gold module,
+      and its gold file must differ. The donor's JSON length is closest to this task's G-json (ratio reported; ±15%
+      target).
+    - Cells: depth 1 at S-find and S-use, depth 2 at S-find (n = 1), all sizes.
+    - Reading: G-json − G-null is the location content delivered as graph output, with the same context ending (a tool
+      response). G-null − L0 is the ending effect plus whatever the unrelated graph suggests. At S-find, compare it with
+      X-file − L0 (a wrong file in text). At S-use the file has already been read, so G-null − L0 is mostly the ending
+      effect.
+    - At depth 2, `followed_wrong` for G-null means the call went to the donor's file or symbol.
+13. **Action / arguments split (exploratory).** Every newly scored cell records `logp_action` (target tokens up to the
+    first token that depends on the arguments, found by also tokenizing the same call with empty arguments) and
+    `logp_args` (the rest); they sum to `logp`. With the real templates the action part is `<|tool_call>call:<tool>`
+    plus at most the opening brace (`tests/test_template_scoring.py`). To get the split where C03 already scored the
+    cells, S-use L0, L2, L5 and W are re-scored for 31b, e4b and 12b (rows marked `purpose: rescore`). Their totals
+    also measure run-to-run reproducibility against C03.

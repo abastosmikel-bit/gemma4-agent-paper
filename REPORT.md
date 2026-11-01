@@ -595,3 +595,22 @@ the coordinator's Kaggle notebook outputs and committed them (`results/C00_gold_
 
 **Run order** (`notebooks/README.md`): C04 and C05 each need only C03's output and are independent of each other.
 `notebooks/C03v_test_verify__CPU.ipynb` now runs last and verifies the sampled edits of C03 and, if attached, C04.
+
+**Verified without GPU (papermill under Python 3.12, real 41-wheel install, mock server; `tests/papermill_dryrun.sh`):**
+- C04 passes every content check:
+  - It runs only the C03 cells that were missing. The fixture trims C03's output to look like the real run: no e2b, no
+    12b depth 2, 12b depth 1 cut for 2 tasks.
+  - G-null runs at depth 1 for all sizes; X-graph and G-null run at depth 2 for all sizes.
+  - Re-scores run only for 31b/e4b/12b, and the action/arguments split is present on every scored cell.
+  - It writes one file per size.
+- C05 runs both stages (4 batches) with per-stage discordance.
+- C05S stops by the sequential rule after stage 1.
+- C03v verifies edits from both C03 and C04 (466 samples).
+- Freeze tests:
+  - C04F stops after the second freeze and skips the remaining sizes.
+  - C05F restarts the server once, then stops before stage 2.
+- Regressions after the runner refactor: C01, C03, C03X and C03F still pass.
+- Unit tests: 16 in the main venv (incl. the G-null donor rule) plus 4 for `common/stats.py`, all passing. The real-template
+  test checks the split on 31b, 12b and e4b.
+- `pilot_c/analyze_c05.py` was run once on synthetic outcomes (in /tmp), to check that it computes. Nothing from that was
+  kept.

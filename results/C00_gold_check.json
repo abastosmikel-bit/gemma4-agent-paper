@@ -1,0 +1,1703 @@
+{
+ "rows": [
+  {
+   "instance_id": "fastapi_15588",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 10.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_15589",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 9.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_7502",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 76.5,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "requests_7433",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 76.2,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "requests_7427",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 3.8,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_7315",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 3.2,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_7328",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 76.4,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "requests_7309",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 3.7,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_7205",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 5.1,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_4077",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_4079",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_4076",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_4075",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14258",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14873",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 8.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_13920",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14794",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14786",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14479",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14463",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_12942",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 6.7,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14349",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.7,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14487",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 8.1,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_11355",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.2,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14485",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.2,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14455",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_9753",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14430",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_5077",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14361",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.7,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_13207",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14360",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.3,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14356",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "fastapi_5624",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14301",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14266",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14246",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.9,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_9425",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3718",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3953",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3944",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3882",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3894",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3935",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3905",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_15763",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 5.5,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14297",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14303",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 4.0,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "fastapi_13537",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14616",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_11194",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_6629",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 68.1,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "requests_6644",
+   "repo": "psf/requests",
+   "gold_resolved": true,
+   "baseline_resolved": true,
+   "valid": false,
+   "verify_s": 3.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "requests_6589",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 68.3,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "rich_3296",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 5.6,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3518",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3521",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3506",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3480",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 3.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3472",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 8.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3454",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3471",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3470",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3469",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.3,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_2943",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_2725",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3067",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3006",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3064",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 6.2,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3063",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_15661",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 9.9,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_15030",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 10.6,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14962",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 11.5,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_15280",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 11.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14964",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 12.3,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_15023",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 10.0,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14986",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 10.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14978",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 10.1,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "requests_7505",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 76.8,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "rich_4070",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.5,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_4006",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14851",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": true,
+   "valid": false,
+   "verify_s": 10.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14492",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 8.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14099",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.9,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14609",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.9,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14372",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 8.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14512",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.4,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14482",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.6,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14306",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14458",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14459",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.1,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14448",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_9555",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14419",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 7.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14262",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.6,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14186",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.5,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_13713",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 7.7,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14077",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": true,
+   "valid": false,
+   "verify_s": 7.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3934",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.9,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3942",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3938",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3930",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "httpx_3672",
+   "repo": "encode/httpx",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 2.5,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14791",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 10.0,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals",
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_15800",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 10.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_15785",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 19.9,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "fastapi_14371",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 9.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals",
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14605",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 9.0,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals",
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14583",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 9.5,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_15745",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 9.9,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_14953",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 9.7,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "inline_snapshot"
+   ]
+  },
+  {
+   "instance_id": "fastapi_13786",
+   "repo": "fastapi/fastapi",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 8.8,
+   "error": null,
+   "failure_class": "missing_module",
+   "missing_modules": [
+    "dirty_equals"
+   ]
+  },
+  {
+   "instance_id": "requests_6757",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 76.0,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "requests_6592",
+   "repo": "psf/requests",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 68.5,
+   "error": null,
+   "failure_class": "missing_fixture",
+   "missing_modules": [
+    "httpbin",
+    "httpbin_secure"
+   ]
+  },
+  {
+   "instance_id": "rich_3180",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.0,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3486",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 6.9,
+   "error": "Required test node did not pass: test_traceback_finely_grained_missing",
+   "failure_class": "harness_error",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3777",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3468",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.3,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3782",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.2,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3772",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 6.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3675",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.7,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3676",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 5.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3535",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3052",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3278",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.4,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3105",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.5,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3130",
+   "repo": "Textualize/rich",
+   "gold_resolved": false,
+   "baseline_resolved": false,
+   "valid": false,
+   "verify_s": 5.3,
+   "error": null,
+   "failure_class": "test_failure",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3043",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.6,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  },
+  {
+   "instance_id": "rich_3061",
+   "repo": "Textualize/rich",
+   "gold_resolved": true,
+   "baseline_resolved": false,
+   "valid": true,
+   "verify_s": 4.8,
+   "error": null,
+   "failure_class": "resolved",
+   "missing_modules": []
+  }
+ ],
+ "summary": {
+  "checked": 129,
+  "gold_resolved": 74,
+  "baseline_resolved_without_patch": 3,
+  "valid": 71,
+  "by_repo": {
+   "fastapi/fastapi": {
+    "checked": 67,
+    "gold_resolved": 31,
+    "valid": 29
+   },
+   "psf/requests": {
+    "checked": 13,
+    "gold_resolved": 1,
+    "valid": 0
+   },
+   "Textualize/rich": {
+    "checked": 48,
+    "gold_resolved": 42,
+    "valid": 42
+   },
+   "encode/httpx": {
+    "checked": 1,
+    "gold_resolved": 0,
+    "valid": 0
+   }
+  },
+  "failure_classes": {
+   "resolved": 74,
+   "missing_fixture": 8,
+   "test_failure": 12,
+   "missing_module": 34,
+   "harness_error": 1
+  },
+  "missing_modules": {
+   "dirty_equals": 9,
+   "inline_snapshot": 28
+  },
+  "missing_fixtures": {
+   "httpbin": 8,
+   "httpbin_secure": 8
+  },
+  "fastapi_failing_on_inline_snapshot_or_dirty_equals": 34
+ },
+ "env": {
+  "python": "3.12.13",
+  "nproc": 4,
+  "gpus": [],
+  "versions": {
+   "swegemma": "0.2.11",
+   "adk-eval-core": "0.1.0",
+   "adk-submission": "0.2.13",
+   "google-adk": "1.36.1"
+  }
+ },
+ "selection": {
+  "seed": 20261031,
+  "eligible_valid_in_order": {
+   "fastapi/fastapi": [
+    "fastapi_9753",
+    "fastapi_15589",
+    "fastapi_5077",
+    "fastapi_14479",
+    "fastapi_14463",
+    "fastapi_14301",
+    "fastapi_5624",
+    "fastapi_13920",
+    "fastapi_14794",
+    "fastapi_9425",
+    "fastapi_14873",
+    "fastapi_14258",
+    "fastapi_11194",
+    "fastapi_14616",
+    "fastapi_13537",
+    "fastapi_15588",
+    "fastapi_14487",
+    "fastapi_14786"
+   ],
+   "Textualize/rich": [
+    "rich_3882",
+    "rich_2943",
+    "rich_3067",
+    "rich_3480",
+    "rich_3935",
+    "rich_4076",
+    "rich_4075",
+    "rich_3953",
+    "rich_3472",
+    "rich_3905",
+    "rich_3718",
+    "rich_3506",
+    "rich_4079",
+    "rich_3470",
+    "rich_2725",
+    "rich_3063",
+    "rich_4077",
+    "rich_3518",
+    "rich_3521",
+    "rich_3454",
+    "rich_3894",
+    "rich_3944",
+    "rich_3471",
+    "rich_3006"
+   ],
+   "psf/requests": []
+  },
+  "smoke3": [
+   "fastapi_9753",
+   "rich_3882",
+   "fastapi_15589"
+  ],
+  "valid_all": [
+   "fastapi_11194",
+   "fastapi_13537",
+   "fastapi_13920",
+   "fastapi_14258",
+   "fastapi_14301",
+   "fastapi_14306",
+   "fastapi_14372",
+   "fastapi_14419",
+   "fastapi_14448",
+   "fastapi_14458",
+   "fastapi_14463",
+   "fastapi_14479",
+   "fastapi_14487",
+   "fastapi_14492",
+   "fastapi_14616",
+   "fastapi_14786",
+   "fastapi_14794",
+   "fastapi_14873",
+   "fastapi_14986",
+   "fastapi_15280",
+   "fastapi_15588",
+   "fastapi_15589",
+   "fastapi_15661",
+   "fastapi_15800",
+   "fastapi_5077",
+   "fastapi_5624",
+   "fastapi_9425",
+   "fastapi_9555",
+   "fastapi_9753",
+   "rich_2725",
+   "rich_2943",
+   "rich_3006",
+   "rich_3043",
+   "rich_3052",
+   "rich_3061",
+   "rich_3063",
+   "rich_3067",
+   "rich_3105",
+   "rich_3180",
+   "rich_3278",
+   "rich_3454",
+   "rich_3468",
+   "rich_3470",
+   "rich_3471",
+   "rich_3472",
+   "rich_3480",
+   "rich_3506",
+   "rich_3518",
+   "rich_3521",
+   "rich_3535",
+   "rich_3675",
+   "rich_3676",
+   "rich_3718",
+   "rich_3772",
+   "rich_3777",
+   "rich_3782",
+   "rich_3882",
+   "rich_3894",
+   "rich_3905",
+   "rich_3930",
+   "rich_3934",
+   "rich_3935",
+   "rich_3938",
+   "rich_3942",
+   "rich_3944",
+   "rich_3953",
+   "rich_4006",
+   "rich_4075",
+   "rich_4076",
+   "rich_4077",
+   "rich_4079"
+  ]
+ }
+}

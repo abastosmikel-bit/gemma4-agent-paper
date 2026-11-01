@@ -87,7 +87,7 @@ SPECS = {
     "C03": {"file": "C03_probe__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
             "inputs": [COMPETITION, WHEELHOUSE, GEMMA], "upstream": "C00", "upstream_file": "C00_gold_check.json",
             "time": "≈ 2.2 L4x4 h (range 1.6–3.0; hard stop 2.9 h)",
-            "output": "C03_probe.json",
+            "output": "C03_probe.json", "extra_output": "C03_probe_31b.json, C03_probe_e4b.json, C03_probe_12b.json, C03_probe_e2b.json (one per size; each is complete on its own)",
             "what": "Information-ladder probe (pre-registered: docs/PLAN.md, frozen at 168d115). Captures the agent's "
                     "exact contexts with the real harness loop, then for 31b, e4b, 12b, e2b scores the log-likelihood "
                     "of the correct action under each rung and samples one next action."},
@@ -112,8 +112,9 @@ def first_cell(key: str) -> dict:
              "- **Inputs to attach:** " + "; ".join(sp["inputs"]),
              f"- **Earlier output needed:** {up}",
              f"- **Expected run time:** {sp['time']}",
-             f"- **Bring back:** `/kaggle/working/{sp['output']}` → commit to `results/` on branch `pilot/c-bottleneck`. "
-             "Leave `/kaggle/working/private/` on Kaggle (competition-derived)."]
+             f"- **Bring back:** `/kaggle/working/{sp['output']}`"
+             + (f" and {sp['extra_output']}" if sp.get("extra_output") else "")
+             + " → commit to `results/` on branch `pilot/c-bottleneck`. Leave `/kaggle/working/private/` on Kaggle (competition-derived)."]
     if sp["accelerator"].startswith("GPU"):
         lines.append(f"- {L4_NOTE}")
         lines.append(f"- {FREEZE_NOTE}")
@@ -146,7 +147,8 @@ def readme() -> str:
     for i, (k, sp) in enumerate(SPECS.items(), 1):
         up = f"`notebooks/{SPECS[sp['upstream']]['file']}` → `{sp['upstream_file']}`" if sp["upstream"] else "—"
         rows.append(f"| {i} | `notebooks/{sp['file']}` | {sp['accelerator']} | {sp['internet']} | "
-                    + "; ".join(sp["inputs"]) + f" | {up} | {sp['time']} | `results/{sp['output']}` |")
+                    + "; ".join(sp["inputs"]) + f" | {up} | {sp['time']} | `results/{sp['output']}`"
+                    + (" + per-size files" if sp.get("extra_output") else "") + " |")
     tail = ["", "`notebooks/C01_smoke_timing__L4x4.ipynb` and `notebooks/C03_probe__L4x4.ipynb` both need only the output of "
             "`notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other.", "",
             "When a notebook finishes, download the output file named in the table and commit it to `results/`.", "",
@@ -209,10 +211,12 @@ gold = kr.build_gold(TASKS)
 MAX_FREEZES = 2
 
 def start_watched(model):
+    # start a server (in its own process group, after GPU memory is free) and its watchdog
     wd.reset()
     agent_dir = kr.prepare_agent_dir(model, BUDGET)
     server, models, adapters, startup = kr.start_server(agent_dir)
-    dog = wd.Watchdog(kr.server_root(server), server.stop)
+    tag = kr.SHORT[model]
+    dog = wd.Watchdog(kr.server_root(server), lambda srv=server: kr.stop_server(srv, tag=tag))
     dog.start()
     summary["servers"].append({{"model": model, "startup_s": round(startup, 1)}})
     return agent_dir, server, models, adapters, dog
@@ -220,7 +224,16 @@ def start_watched(model):
 for model, conds in PLAN:
     if summary["stopped"] or (time.time() - SESSION_T0) / 3600 > MAX_SESSION_HOURS:
         summary["skipped"].append({{"model": model, "reason": summary["stopped"] or "session time guard"}}); continue
-    agent_dir, server, models, adapters, dog = start_watched(model)
+    try:
+        agent_dir, server, models, adapters, dog = start_watched(model)
+    except kr.GpuMemoryNotReleased as e:
+        summary["stopped"] = "GPU memory was not released by a stopped server"
+        summary["servers"].append({{"model": model, "error": f"GpuMemoryNotReleased: {{e}}"}})
+        kr.save_summary(out, summary); continue
+    except Exception as e:
+        summary["servers"].append({{"model": model, "error": f"{{type(e).__name__}}: {{str(e)[:400]}}",
+                                   "server_error_kinds": kr.error_kinds(kr.LAST_SERVER_ERRORS)}})
+        kr.save_summary(out, summary); continue
     summary["agent"] = kr.describe_agent(agent_dir)
     try:
         for cond, rep in conds:
@@ -228,8 +241,12 @@ for model, conds in PLAN:
                 summary["skipped"].append({{"model": model, "condition": cond, "replicate": rep,
                                            "reason": summary["stopped"] or "session time guard"}}); continue
             if wd.TRIPPED.is_set():   # the previous condition froze the server: restart it for this one
-                dog.stop(); kr.safe_stop(server)
-                agent_dir, server, models, adapters, dog = start_watched(model)
+                dog.stop(); kr.stop_server(server, tag=kr.SHORT[model])
+                try:
+                    agent_dir, server, models, adapters, dog = start_watched(model)
+                except Exception as e:
+                    summary["stopped"] = f"restart after a freeze failed: {{type(e).__name__}}: {{str(e)[:200]}}"
+                    break
                 summary["restarts"] += 1
             run = kr.run_condition(agent_dir, models, adapters, TASKS, gold, cond, rep, CONCURRENCY)
             if wd.TRIPPED.is_set():
@@ -244,7 +261,7 @@ for model, conds in PLAN:
             summary["session_elapsed_h"] = round((time.time() - SESSION_T0) / 3600, 3)
             kr.save_summary(out, summary)
     finally:
-        dog.stop(); kr.safe_stop(server)
+        dog.stop(); summary["servers"][-1]["stop"] = kr.stop_server(server, tag=kr.SHORT[model])
 summary["session_elapsed_h"] = round((time.time() - SESSION_T0) / 3600, 3)
 kr.save_summary(out, summary)
 print('L4x4 hours used by this session (wall clock):', summary["session_elapsed_h"], '| freezes:', len(summary["freezes"]),
@@ -340,7 +357,14 @@ while any(len(v) > k for v in order.values()):
     rr += [v[k] for v in order.values() if len(v) > k]; k += 1
 CANDIDATES = rr[:40]                    # records are built for up to 40, the first 30 constructible are probed
 MAX_TASKS = 30
+# One server start per size (4 = the minimum; the capture step above uses no inference server). 31b goes first because
+# it writes the "change in words" rung that the other sizes' L4/L5/W/X-words cells use; then e4b (the small-footprint
+# size), 12b, e2b. Each size's results are saved on their own (C03_probe_<size>.json), so a failure keeps the others.
 SIZES = ['gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct', 'gemma-4-12b-it-qat-w4a16-ct', 'gemma-4-e2b-it-qat-w4a16-ct']
+# Probe servers only: more GPU headroom for prompt_logprobs (a full-vocabulary log-softmax per prompt token), smaller
+# prefill chunks. Scheduling/memory settings only; they do not change the model's outputs. (PLAN §11, deviation 7)
+PROBE_GPU_UTIL = 0.75
+PROBE_VLLM_ARGS = ('--max-num-batched-tokens', '1024')
 BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # capture runs the real agent config
 MAX_SESSION_HOURS = 2.9
 WORKERS = 16
@@ -375,37 +399,58 @@ with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:
 (kr.PRIVATE / 'probe_contexts.json').write_text(json.dumps(ctxs))
 save()
 
-# 4: one vLLM server per size (starter-identical); 31b first because it writes the words rung.
-# Freeze protection (common/server_watchdog.py): per-request timeouts + a /health watchdog that kills a frozen
-# server; the next size starts a fresh server; the session stops after the second freeze.
+# 4: one vLLM server per size. Each size is isolated: its start, run, stop and GPU-memory wait are wrapped, and its
+# results are saved to their own file. Freeze protection (common/server_watchdog.py) kills a frozen server; the
+# session stops after a second freeze, after two consecutive self-check failures, or if GPU memory is not released.
 from common import server_watchdog as wd
 deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
 summary['freezes'], summary['stopped'] = [], None
-MAX_FREEZES = 2
+MAX_FREEZES, selfcheck_fail_streak = 2, 0
 for model in SIZES:
+    size = kr.SHORT[model]
     if summary['stopped'] or time.time() > deadline - 600:
         summary['sizes'].append({'model': model, 'skipped': summary['stopped'] or 'session time guard'}); continue
-    wd.reset()
-    agent_dir = kr.prepare_agent_dir(model, BUDGET)
-    server, models, adapters, startup = kr.start_server(agent_dir)
-    dog = wd.Watchdog(kr.server_root(server), server.stop)
-    dog.start()
+    res, startup, server, dog = {'size': size, 'd1': [], 'd2': []}, None, None, None
     try:
-        res = pr.run_size(server, model, recs, ctxs, deadline, WORKERS, write_words_here=(model.startswith('gemma-4-31b')))
+        wd.reset()
+        agent_dir = kr.prepare_agent_dir(model, BUDGET)
+        server, models, adapters, startup = kr.start_server(agent_dir, gpu_memory_utilization=PROBE_GPU_UTIL,
+                                                            extra_args=PROBE_VLLM_ARGS)
+        dog = wd.Watchdog(kr.server_root(server), lambda srv=server, tag=size: kr.stop_server(srv, tag=tag))
+        dog.start()
+        res = pr.run_size(server, model, recs, ctxs, deadline, WORKERS, write_words_here=(size == '31b'))
+    except kr.GpuMemoryNotReleased as e:
+        res['error'] = f'GpuMemoryNotReleased: {e}'
+        summary['stopped'] = 'GPU memory was not released by a stopped server'
     except Exception as e:
-        res = {'size': kr.SHORT[model], 'error': f'{type(e).__name__}: {str(e)[:300]}', 'd1': [], 'd2': []}
+        res['error'] = f'{type(e).__name__}: {str(e)[:600]}'
     finally:
-        dog.stop(); kr.safe_stop(server)
+        if dog is not None:
+            dog.stop()
+        if server is not None:
+            res['stop'] = kr.stop_server(server, tag=size)
+        res['server_error_kinds'] = kr.error_kinds(kr.LAST_SERVER_ERRORS)
+        if kr.LAST_SERVER_ERRORS and res.get('error'):
+            print(f'[{size}] server log errors (full log in private/server_logs/):', *kr.LAST_SERVER_ERRORS[-8:], sep='\\n  ')
     if wd.TRIPPED.is_set():
         res['server_frozen'] = True
         summary['freezes'].append({'model': model, **wd.state()})
         if len(summary['freezes']) >= MAX_FREEZES:
             summary['stopped'] = 'second inference-server freeze'
-    summary['d1'] += res.pop('d1'); summary['d2'] += res.pop('d2')
-    summary['sizes'].append({'model': model, 'startup_s': round(startup, 1), **res})
+    selfcheck_fail_streak = selfcheck_fail_streak + 1 if 'SELFCHECK' in str(res.get('error', '')) else 0
+    if selfcheck_fail_streak >= 2:
+        summary['stopped'] = 'API self-check failed on two sizes in a row'
+    d1, d2 = res.pop('d1'), res.pop('d2')
+    entry = {'model': model, 'startup_s': round(startup, 1) if startup else None, **res}
+    Path(f'/kaggle/working/C03_probe_{size}.json').write_text(json.dumps(
+        {'pilot': 'C', 'notebook': 'notebooks/C03_probe__L4x4.ipynb', 'plan_commit': PLAN_COMMIT, 'size': size,
+         'task_ids': summary['task_ids'], 'entry': entry, 'd1': d1, 'd2': d2,
+         'summary': pr.summarize(d1, d2)}, indent=1))
+    summary['d1'] += d1; summary['d2'] += d2
+    summary['sizes'].append(entry)
     save()
-    if 'SELFCHECK' in str(res.get('error', '')) and len(summary['sizes']) == 1 and not wd.TRIPPED.is_set():
-        print('API self-check failed on the first size: stopping to save GPU quota'); break
+    if res.get('error'):
+        print(f'[{size}] FAILED: {res["error"][:300]}')
 save()   # also records sizes skipped after a stop
 with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:   # again, now with words and cross-task controls
     for r in recs: f.write(json.dumps(pb.public_record(r)) + '\\n')
@@ -456,6 +501,10 @@ def main() -> None:
     for build in (gold_check_nb, smoke_nb, probe_nb, probe_verify_nb):
         nb, fname = build()
         src = "".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%"))
+        for i, c in enumerate(nb["cells"]):  # every generated code cell must at least parse
+            cs = "".join(c["source"])
+            if c["cell_type"] == "code" and not (cs.startswith("%%writefile") and not cs.split("\n", 1)[0].endswith(".py")):
+                compile(cs.partition("\n")[2] if cs.startswith("%%writefile") else cs, f"{fname}:cell{i}", "exec")
         if "__L4x4" in fname or "__T4x2" in fname:
             assert "wd.Watchdog(" in src and "server_watchdog" in src, f"{fname}: GPU notebooks must run the server watchdog"
         (out / fname).write_text(json.dumps(nb, indent=1), encoding="utf-8")

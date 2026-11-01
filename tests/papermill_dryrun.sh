@@ -6,6 +6,7 @@
 # The venv must be Python 3.12 (the official starter's Kaggle environment) and WHEELHOUSE must hold the full
 # wheelhouse (41 wheels), so each notebook's real `pip install` of the wheelhouse runs exactly as on Kaggle.
 # Extra key NEG313 (needs NEG313_VENV=<py3.13 venv>): runs C00 under Python 3.13; expects the environment check to stop it.
+# Extra key C03X: the 12b server fails to start; expects the other three sizes to finish and save their own files.
 # Extra keys C01F / C03F: the mock server hangs (also on /health) after a few requests; expects the watchdog to kill it,
 # restart once, then stop the session after the second freeze, within minutes.
 # usage: WHEELHOUSE=<dir> tests/papermill_dryrun.sh <local_comp_dir> <py3.12 venv_dir> <out_dir> [C00 C01 C03 C03v NEG313 ...]
@@ -33,10 +34,19 @@ if key == "C01":
     runs = d["runs"]
     ok = runs and all(r["aggregate"]["tool_calls_mean"] > 0 and r["aggregate"]["errors"] == 0 for r in runs) and not d.get("stopped")
     msg = f"{len(runs)} runs, tool calls/task {[r['aggregate']['tool_calls_mean'] for r in runs]}, errors {[r['aggregate']['errors'] for r in runs]}"
-elif key == "C03":
+elif key in ("C03", "C03X"):
+    import os
     d1 = sum(r.get("ok", False) for r in d["d1"]); d2 = sum(r.get("ok", False) for r in d["d2"])
-    ok = not d.get("capture_missing") and d1 > 0 and d2 > 0 and not any(s.get("error") for s in d["sizes"])
-    msg = f"captured {len(d['task_ids']) - len(d.get('capture_missing', []))}/{len(d['task_ids'])}, depth-1 ok {d1}, depth-2 ok {d2}"
+    failed = [s["size"] for s in d["sizes"] if s.get("error")]
+    per_size = {z: json.load(open(f"/kaggle/working/C03_probe_{z}.json")) for z in ("31b", "e4b", "12b", "e2b")
+                if os.path.exists(f"/kaggle/working/C03_probe_{z}.json")}
+    good = [z for z, v in per_size.items() if sum(r.get("ok", False) for r in v["d1"]) > 0]
+    modes = sorted({r.get("mode") for r in d["d1"] if r.get("ok")})
+    expect_failed = ["12b"] if key == "C03X" else []
+    ok = (not d.get("capture_missing") and d1 > 0 and d2 > 0 and failed == expect_failed
+          and sorted(good) == sorted(z for z in ("31b", "e4b", "12b", "e2b") if z not in expect_failed))
+    msg = (f"captured {len(d['task_ids']) - len(d.get('capture_missing', []))}/{len(d['task_ids'])}, depth-1 ok {d1}, "
+           f"depth-2 ok {d2}, failed sizes {failed}, per-size files with results {sorted(good)}, score modes {modes}")
 elif key == "C03v":
     ok = len(d["rows"]) > 0
     msg = f"{len(d['rows'])} verified samples"
@@ -60,6 +70,8 @@ for nb in "$@"; do
          rm -rf /kaggle/input/c03-probe-l4x4 && mkdir -p /kaggle/input/c03-probe-l4x4
          cp /kaggle/working/C03_probe.json /kaggle/input/c03-probe-l4x4/
          cp -r /kaggle/working/private /kaggle/input/c03-probe-l4x4/ ;;
+    C03X) PILOT_MOCK_FAIL_START=12b MOCK_PROBE=1 PILOT_MIN_VALID=${PILOT_MIN_VALID:-2} PILOT_MOCK_LLM=1 PILOT_REPO=$REPO "$PM" "$NB/C03_probe__L4x4.ipynb" "$OUT/C03X_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
+         cp /kaggle/working/C03_probe.json "$OUT/C03X_C03_probe.json"; check_content C03X "$OUT/C03X_C03_probe.json" ;;
     C03v) "$PM" "$NB/C03v_test_verify__CPU.ipynb" "$OUT/C03v_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
          cp /kaggle/working/C03v_test_verify.json "$OUT/"; check_content C03v "$OUT/C03v_test_verify.json" ;;
     NEG313) V13=${NEG313_VENV:?set NEG313_VENV to a Python 3.13 venv with papermill}

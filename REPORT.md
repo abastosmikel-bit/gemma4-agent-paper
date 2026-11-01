@@ -419,3 +419,67 @@ Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermi
   - Normal runs with content checks: C01 has 9 tool calls per task and 0 errors in all 5 runs; C03 captured 4/4
     tasks, 456 depth-1 and 404 depth-2 cells; C03v has 308 verified samples.
   - With the production settings (30 s × 3 health checks), detection takes about 90 s.
+
+## 14. Failed Kaggle run of `notebooks/C03_probe__L4x4.ipynb` (2026-10-31) and fixes
+
+**GPU used by the failed run: ≈0.29 L4x4 h** (1,053 s, from the log). GPU hours used in total so far: **≈0.29**.
+
+**What happened (from the log and the partial `C03_probe.json`):**
+- Install 58 s; task records + graphs 191 s; capture of the 30 tasks' contexts through the real agent loop 308 s
+  (5.1 min, no inference server). All 30 context checks passed; 3 candidates were excluded (change outside the read
+  span).
+- 31b server up after 366 s. **The 31b step then took 14 s and produced nothing.** The first request of its
+  self-check got **HTTP 500**, so 0 cells were scored, 0 samples drawn, and the words rung was never written. About
+  10 s of the 14 were `stop()` waiting before it killed the server.
+  - The error was raised as a plain `HTTPError`, not as a self-check failure, so the stop rule didn't fire and the
+    loop went on.
+  - The cause of the 500 was lost: my client dropped the response body, and `VllmServer.stop()` deletes the server
+    log. Leading hypothesis, unverified: out of memory in `prompt_logprobs` (PLAN §11, deviation 7).
+- `VllmServer.stop()` killed only the API-server process. The EngineCore and the 4 tensor-parallel workers survived
+  with ~20 GiB per GPU, so the e4b server found 1.53 GiB free and the notebook crashed on an uncaught startup error.
+- **A second bug, found offline afterwards:** with the 31b and 12b templates every S-find cell would have failed the
+  token-prefix check (empty thought block in the generation prompt; deviation 8).
+
+**Fixes:**
+- **Process groups:** each server starts in its own process group. Stopping saves the log, then sends SIGTERM and
+  SIGKILL to the whole group plus the recorded descendants. Before every start, the notebook waits until
+  `nvidia-smi` shows enough free memory on all 4 GPUs. If it isn't back within 300 s, the session stops with a clear
+  message instead of crashing.
+- **Sizes isolated:** each size runs isolated and writes `C03_probe_<size>.json`. A failed start or run is recorded
+  and the next size runs. The session stops after two consecutive self-check failures, a second freeze, or memory
+  not released.
+- **Order stays 31b → e4b → 12b → e2b:** one server start per size is the minimum (the capture step uses no
+  server), and 31b must go first because it writes the words rung the other sizes use.
+- **Self-check:** it now covers an S-use and an S-find score plus a short 2-sample generation, and any exception in
+  it counts as a self-check failure.
+- **Diagnostics kept:** HTTP error bodies are recorded, and server logs are saved under `private/server_logs/`
+  (error lines printed).
+- **Probe server headroom:** `gpu_memory_utilization=0.75`, `--max-num-batched-tokens 1024`.
+- **Builder guard:** the builder now compiles every generated code cell before writing the notebook.
+
+**Verified without GPU:**
+- `tests/test_server_shutdown.py` uses the real `VllmServer` with a fake vLLM process tree that ignores SIGTERM. The
+  library's own `stop()` leaves 5 of 6 processes alive; the new group stop leaves 0. The GPU-memory wait returns,
+  times out with the clear error, and is a no-op without a GPU.
+- `tests/test_template_scoring.py` uses the real 31b/12b/e4b templates. Every tested cell scores, and the target
+  decodes to exactly the intended `read_file` or `edit_file` call.
+- **Papermill suite** (Python 3.12, real 41-wheel install):
+  - C03: 4/4 captured, 456 depth-1 and 408 depth-2 cells, all four per-size files.
+  - C03 with 12b's server failing to start: 31b, e4b and e2b complete with their own files; 12b recorded as failed.
+  - C03v: 312 verified samples.
+  - Freeze tests: C01 and C03 each stop after 2 freezes, in 100 s and 94 s.
+  - C00 and C01 passed with the same code earlier in the day.
+- **Not verified:** that the HTTP 500 was an out-of-memory error, and real GPU-memory release timing. Both can only
+  show on Kaggle; the next run records them.
+
+**Updated L4x4 estimate for `notebooks/C03_probe__L4x4.ipynb`: ≈2.2 h (range 1.7–3.0), hard stop 2.9 h.**
+
+| Part | Time | Status |
+|---|---|---|
+| install + records + capture | 0.16 h | measured |
+| 31b start | 0.10 h | measured |
+| other three starts | ~0.17 h | estimated |
+| GPU-memory waits | ≤ 0.07 h | estimated |
+| words | 0.05 h | estimated |
+| depth 1 | ~0.75 h | estimated; contexts are ~4–4.5k tokens per the real templates, smaller than the 7k assumed, which offsets the smaller prefill chunks |
+| depth 2 | ~0.85 h | estimated |

@@ -250,8 +250,145 @@ def describe_agent(agent_dir: Path) -> dict[str, Any]:
             "eval_config": yaml.safe_load((agent_dir / "eval_config.yaml").read_text())}
 
 
-def start_server(agent_dir: Path):
-    """Starter-identical vLLM launch. Returns (server, models, adapters, startup_seconds)."""
+class GpuMemoryNotReleased(RuntimeError):
+    """GPU memory did not come back after a server was stopped; starting another server would fail."""
+
+
+SERVER_LOG_DIR = PRIVATE / "server_logs"
+LAST_SERVER_ERRORS: list[str] = []
+
+
+def _own_process_group() -> None:
+    """Make adk_submission start every inference server in its own session / process group.
+
+    VllmServer.start() uses a plain Popen, so the server shares the notebook kernel's process group and
+    VllmServer.stop() kills only the API-server PID: vLLM's EngineCore and its tensor-parallel worker
+    processes survive and keep ~20 GiB on every GPU (Kaggle C03 run, 2026-10-31)."""
+    import types
+    import adk_submission.server as ads
+    if getattr(ads.subprocess, "_pilot_own_group", False):
+        return
+    real = subprocess
+
+    def popen(*args, **kwargs):
+        kwargs.setdefault("start_new_session", True)
+        return real.Popen(*args, **kwargs)
+
+    shim = types.SimpleNamespace(**{n: getattr(real, n) for n in dir(real) if not n.startswith("__")})
+    shim.Popen = popen
+    shim._pilot_own_group = True
+    ads.subprocess = shim
+
+
+def gpu_memory() -> list[tuple[int, int]] | None:
+    """(free MiB, total MiB) per GPU from nvidia-smi, or None when there is no GPU (dry runs)."""
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=memory.free,memory.total", "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=30)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return [tuple(int(float(x)) for x in line.split(",")[:2]) for line in out.stdout.strip().splitlines()]
+
+
+def wait_gpu_free(need_frac: float, timeout_s: float = 300, poll_s: float = 5) -> dict[str, Any]:
+    """Block until every GPU has at least need_frac of its memory free; raise GpuMemoryNotReleased on timeout."""
+    t0 = time.time()
+    while True:
+        mem = gpu_memory()
+        if mem is None:
+            return {"checked": False}
+        if all(free >= need_frac * total for free, total in mem):
+            return {"checked": True, "waited_s": round(time.time() - t0, 1), "free_gib": [round(f / 1024, 2) for f, _ in mem]}
+        if time.time() - t0 > timeout_s:
+            raise GpuMemoryNotReleased(
+                f"GPU memory not released {timeout_s:.0f}s after stopping the previous server: free "
+                f"{[round(f / 1024, 2) for f, _ in mem]} GiB of {[round(t / 1024, 2) for _, t in mem]} GiB; the next "
+                f"server needs {need_frac:.0%} free on every GPU. Stopping instead of starting another server.")
+        time.sleep(poll_s)
+
+
+def _save_server_log(server, tag: str) -> list[str]:
+    """Keep the server log (VllmServer.stop() deletes it) under private/, return its error lines."""
+    path = getattr(server, "log_path", None)
+    if not path or not os.path.exists(path):
+        return []
+    try:
+        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    SERVER_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    (SERVER_LOG_DIR / f"{tag}_{int(time.time())}.log").write_text("\n".join(lines[-2000:]), encoding="utf-8")
+    errs = [l[:300] for l in lines if re.search(r"ERROR|Traceback|Error:|out of memory|OutOfMemory", l)]
+    return errs[-20:]
+
+
+def error_kinds(lines: list[str]) -> list[str]:
+    """Exception class names only (safe to commit; the lines themselves stay private)."""
+    return sorted({m for l in lines for m in re.findall(r"\b([A-Z][A-Za-z]+(?:Error|Exception))\b", l)})
+
+
+def stop_server(server, tag: str = "server", timeout: float = 15.0) -> dict[str, Any]:
+    """Stop an inference server and everything it spawned: SIGTERM, then SIGKILL, to its whole process group,
+    plus any descendants recorded before the kill. Saves the server log first."""
+    import signal
+    global LAST_SERVER_ERRORS
+    LAST_SERVER_ERRORS = _save_server_log(server, tag)
+    info: dict[str, Any] = {"group_killed": False, "survivors": 0, "error_kinds": error_kinds(LAST_SERVER_ERRORS)}
+    proc = getattr(server, "process", None)
+    if proc is None:
+        safe_stop(server)
+        return info
+    pid = proc.pid
+    try:
+        import psutil
+        desc = psutil.Process(pid).children(recursive=True)
+    except Exception:  # noqa: BLE001
+        psutil, desc = None, []
+    try:
+        pgid = os.getpgid(pid)
+    except ProcessLookupError:
+        pgid = None
+    own = pgid is not None and pgid != os.getpgrp()
+    try:
+        if own:
+            os.killpg(pgid, signal.SIGTERM)
+        else:
+            proc.terminate()
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            pass
+        if own:
+            try:
+                os.killpg(pgid, signal.SIGKILL)
+                info["group_killed"] = True
+            except ProcessLookupError:
+                pass
+        elif proc.poll() is None:
+            proc.kill()
+        for d in desc:
+            try:
+                d.kill()
+            except Exception:  # noqa: BLE001
+                pass
+        if psutil is not None and desc:
+            _, alive = psutil.wait_procs(desc, timeout=15)
+            info["survivors"] = len(alive)
+        try:
+            proc.wait(timeout=10)
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        safe_stop(server)
+    info["descendants"] = len(desc)
+    return info
+
+
+def start_server(agent_dir: Path, gpu_memory_utilization: float = 0.90, extra_args: tuple[str, ...] = ()):
+    """Starter-identical vLLM launch (except optional memory settings for the probe), in its own process group.
+    Waits until every GPU is free first. Returns (server, models, adapters, startup_seconds)."""
     if os.environ.get("PILOT_MOCK_LLM"):  # local papermill dry runs only (no GPU, scripted mock LLM)
         return _start_mock_server(agent_dir)
     import litellm
@@ -260,6 +397,7 @@ def start_server(agent_dir: Path):
     from adk_submission.discovery import discover_declared_models
     from swegemma.config import ALLOWED_ADAPTER_EXTENSIONS
 
+    _own_process_group()
     litellm.drop_params = True
     declared = discover_declared_models(agent_dir)
     assert len(declared) == 1, declared
@@ -273,19 +411,27 @@ def start_server(agent_dir: Path):
     ranks = [r for info in amap.values() if (r := getattr(info, "rank", None)) is not None and r > 0]
     n = torch.cuda.device_count() if torch.cuda.is_available() else 1
     tp = 4 if n >= 4 else (2 if n >= 2 else 1)
+    waited = wait_gpu_free(gpu_memory_utilization + 0.02)
     cfg = VllmConfig(
         model=str(model_path), port=8000, host="127.0.0.1", tool_call_parser="gemma4", reasoning_parser="gemma4",
         max_model_len=32768, dtype="bfloat16" if (torch.cuda.is_available() and torch.cuda.is_bf16_supported()) else "auto",
-        gpu_memory_utilization=0.90, enable_auto_tool_choice=True, enable_lora=bool(amap), max_loras=max(1, len(amap)),
-        max_lora_rank=max(ranks) if ranks else 128, scheduler_reserve_full_isl=False, tensor_parallel_size=tp,
-        startup_timeout=60 * 20, extra_args=MODEL_VLLM_EXTRA_ARGS.get(model, ()),
+        gpu_memory_utilization=gpu_memory_utilization, enable_auto_tool_choice=True, enable_lora=bool(amap),
+        max_loras=max(1, len(amap)), max_lora_rank=max(ranks) if ranks else 128, scheduler_reserve_full_isl=False,
+        tensor_parallel_size=tp, startup_timeout=60 * 20,
+        extra_args=tuple(MODEL_VLLM_EXTRA_ARGS.get(model, ())) + tuple(extra_args),
     )
     t0 = time.perf_counter()
     server = VllmServer(cfg, adapter_manifest=adapters)
-    server.start()
+    try:
+        server.start()
+    except Exception:
+        stop_server(server, tag=f"{SHORT[model]}_failed_start")  # also kills workers of a half-started server
+        print("server log errors:", *LAST_SERVER_ERRORS[-8:], sep="\n  ")
+        raise
     startup = time.perf_counter() - t0
     models = server.create_model_registry(aliases=[model], model_prefix="openai/", api_key=os.environ.get("LOCAL_API_KEY", "EMPTY"))
-    print(f"vLLM up for {model} in {startup:.0f}s (tp={tp})")
+    print(f"vLLM up for {model} in {startup:.0f}s (tp={tp}, gpu_memory_utilization={gpu_memory_utilization}, "
+          f"extra={list(extra_args)}, waited for GPU memory: {waited})")
     return server, models, adapters, startup
 
 
@@ -303,6 +449,8 @@ def _start_mock_server(agent_dir: Path):
     litellm.drop_params = True
     install_litellm_reasoning_patch()
     model = describe_agent(agent_dir)["model"]
+    if os.environ.get("PILOT_MOCK_FAIL_START") == SHORT.get(model):  # dry-run test of a size whose server fails
+        raise RuntimeError("mock: inference server exited prematurely")
     srv = serve(make_script("README.md"), port=int(os.environ.get("PILOT_MOCK_PORT", "8001")))
     reg = ModelRegistry()
     reg.register(model, LiteLlm(model="openai/mock", api_base=f"http://127.0.0.1:{srv.server_address[1]}/v1", api_key="EMPTY"))

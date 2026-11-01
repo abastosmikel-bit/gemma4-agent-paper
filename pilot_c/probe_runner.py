@@ -17,6 +17,7 @@ import difflib
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -41,11 +42,19 @@ _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # local 
 TIMEOUT_TOKENIZE, TIMEOUT_SCORE, TIMEOUT_SAMPLE, TIMEOUT_WORDS = 60, 180, 900, 300
 
 
+class ServerHTTPError(RuntimeError):
+    """An HTTP error from the inference server, with the response body (vLLM puts the cause there)."""
+
+
 def _post(url: str, body: dict, timeout: int = TIMEOUT_SCORE) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
     with tracked():  # counted by the watchdog; fails fast once the server is declared frozen
-        with _OPENER.open(req, timeout=timeout) as r:
-            return json.loads(r.read())
+        try:
+            with _OPENER.open(req, timeout=timeout) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="replace")[:600]
+            raise ServerHTTPError(f"HTTP {e.code} from /{url.split('/', 3)[-1]}: {detail}") from None
 
 
 def _get(url: str) -> dict:
@@ -259,29 +268,56 @@ def build_messages(rec: dict, ctx: dict, state: str, cond: str) -> tuple[list[di
 
 # --------------------------------------------------------------------------- scoring and sampling
 
+def _lcp(a: list[int], b: list[int]) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
 def score(root: str, model: str, msgs: list[dict], tools: Any, target: dict) -> dict:
-    body = {"model": model, "messages": msgs, "tools": tools, "add_generation_prompt": True, **SCORE_KW}
-    pre = _post(f"{root}/tokenize", body, TIMEOUT_TOKENIZE)["tokens"]
-    full = _post(f"{root}/tokenize", {**body, "messages": msgs + [target], "add_generation_prompt": False},
-                 TIMEOUT_TOKENIZE)["tokens"]
-    if full[:len(pre)] != pre or len(full) <= len(pre):
-        return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(pre)}
-    if len(full) > MAX_CELL_TOKENS:  # PLAN §9 rule 4
-        return {"ok": False, "why": "too-long", "n_ctx": len(pre)}
-    r = _post(f"{root}/v1/completions", {"model": model, "prompt": full, "max_tokens": 1, "temperature": 0,
+    """Sum of log-probabilities of the target assistant turn, as the model sees it when generating.
+
+    P = context + generation prompt (what the model conditions on), N = context alone, F = context + target turn.
+    "direct": F starts with P (always after a tool response, where the generation prompt adds nothing; and for the
+    e2b/e4b template); S = F, target T = F[len(P):].
+    "spliced": the 31b and 12b templates add an empty thought block to the generation prompt after a user turn, which
+    the rendered assistant turn does not contain. Then A = F[len(N):] (turn header + call), G = P[len(N):]
+    (header + empty thought), T = A minus the shared header, and S = P + T: what the model conditions on, plus the call."""
+    body = {"model": model, "messages": msgs, "tools": tools, **SCORE_KW}
+    P = _post(f"{root}/tokenize", {**body, "add_generation_prompt": True}, TIMEOUT_TOKENIZE)["tokens"]
+    N = _post(f"{root}/tokenize", {**body, "add_generation_prompt": False}, TIMEOUT_TOKENIZE)["tokens"]
+    F = _post(f"{root}/tokenize", {**body, "messages": msgs + [target], "add_generation_prompt": False},
+              TIMEOUT_TOKENIZE)["tokens"]
+    if len(F) > len(P) and F[:len(P)] == P:  # e.g. after a tool response (P == N), or templates without an empty thought
+        T, S, mode = F[len(P):], F, "direct"
+    elif F[:len(N)] == N and P[:len(N)] == N:
+        A, G = F[len(N):], P[len(N):]
+        h = _lcp(A, G)
+        if h == 0 or h >= len(A):
+            return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(P)}
+        T = A[h:]
+        S, mode = P + T, "spliced"
+    else:
+        return {"ok": False, "why": "prefix-mismatch", "n_ctx": len(P)}
+    if len(S) > MAX_CELL_TOKENS:  # PLAN §9 rule 4
+        return {"ok": False, "why": "too-long", "n_ctx": len(P)}
+    r = _post(f"{root}/v1/completions", {"model": model, "prompt": S, "max_tokens": 1, "temperature": 0,
                                          "prompt_logprobs": 0}, TIMEOUT_SCORE)
     pl = r["choices"][0].get("prompt_logprobs")
-    if not pl or len(pl) != len(full):
-        return {"ok": False, "why": "no-prompt-logprobs", "n_ctx": len(pre)}
+    if not pl or len(pl) != len(S):
+        return {"ok": False, "why": "no-prompt-logprobs", "n_ctx": len(P)}
     lps = []
-    for i in range(len(pre), len(full)):
+    for i in range(len(P), len(S)):
         e = pl[i] or {}
-        v = e.get(str(full[i])) or e.get(full[i])
+        v = e.get(str(S[i])) or e.get(S[i])
         if v is None:
-            return {"ok": False, "why": "token-missing", "n_ctx": len(pre)}
+            return {"ok": False, "why": "token-missing", "n_ctx": len(P)}
         lps.append(float(v["logprob"] if isinstance(v, dict) else v))
     return {"ok": True, "logp": round(sum(lps), 4), "n_tok": len(lps), "mean_logp": round(sum(lps) / len(lps), 5),
-            "n_ctx": len(pre)}
+            "n_ctx": len(P), "mode": mode}
 
 
 def sample(root: str, model: str, msgs: list[dict], tools: Any, n: int, seed: int) -> list[dict]:
@@ -328,13 +364,22 @@ def run_size(server, model_alias: str, recs: list[dict], ctxs: dict[str, dict], 
     usable = [r for r in recs if r["instance_id"] in ctxs]
     if not usable:
         raise RuntimeError("SELFCHECK failed: no captured agent contexts (the capture phase produced nothing)")
-    # self-check on one cell before spending time
+    # self-check before spending time: score one S-use and one S-find cell, and draw one short sample
     r0 = usable[0]
-    m = build_messages(r0, ctxs[r0["instance_id"]], "use", "L0")
-    sc = score(root, mid, m[0], ctxs[r0["instance_id"]]["tools"], m[1])
-    out["selfcheck"] = sc
-    if not sc.get("ok"):
-        raise RuntimeError(f"SELFCHECK failed on {size}: {sc}")
+    try:
+        checks = {}
+        for st in ("use", "find"):
+            m = build_messages(r0, ctxs[r0["instance_id"]], st, "L0")
+            checks[st] = score(root, mid, m[0], ctxs[r0["instance_id"]]["tools"], m[1])
+        m = build_messages(r0, ctxs[r0["instance_id"]], "use", "L0")
+        smp = _post(f"{root}/v1/chat/completions", {"model": mid, "messages": m[0], "tools": ctxs[r0["instance_id"]]["tools"],
+                    "n": 2, "seed": 1, **{**AGENT_SAMPLING, "max_tokens": 16}}, TIMEOUT_SAMPLE)
+        checks["sample_choices"] = len(smp.get("choices", []))
+    except Exception as e:  # noqa: BLE001 - any failure here means the API path is broken for this size
+        raise RuntimeError(f"SELFCHECK failed on {size}: {type(e).__name__}: {str(e)[:400]}") from e
+    out["selfcheck"] = checks
+    if not (checks["use"].get("ok") and checks["find"].get("ok") and checks["sample_choices"] == 2):
+        raise RuntimeError(f"SELFCHECK failed on {size}: {checks}")
     if write_words_here:
         out["words_status"] = write_words(root, mid, usable)
         pb.assign_cross_task_controls(usable)

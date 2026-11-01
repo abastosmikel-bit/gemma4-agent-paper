@@ -259,3 +259,26 @@ data had been seen.
    the probe = `notebooks/C03_probe__L4x4.ipynb` (output `C03_probe.json`);
    its CPU test verification = `notebooks/C03v_test_verify__CPU.ipynb`.
    "notebook 02" in §8 means the 12b validation notebook, which is not built yet and will get its own C-number.
+7. **Probe server memory settings (2026-10-31, after the failed Kaggle run of `notebooks/C03_probe__L4x4.ipynb`).**
+   - What happened: the 31b self-check got HTTP 500 from the server on its first request, and the cause was not captured.
+   - Leading, unverified hypothesis: out of memory in `prompt_logprobs`. vLLM computes a full-vocabulary (262k)
+     log-softmax per prompt token in chunks of `max_num_batched_tokens` (default 2048 on L4), with only ~10% of GPU
+     memory left at `gpu_memory_utilization=0.9`.
+   - Change: probe servers now run with `gpu_memory_utilization=0.75` and `--max-num-batched-tokens 1024`. These are
+     scheduling and memory settings only and do not change model outputs. Agent rollouts
+     (`notebooks/C01_smoke_timing__L4x4.ipynb`) keep the starter settings.
+   - HTTP error bodies and the server log are now kept, so the next failure shows its cause.
+8. **Target tokens with the 31b and 12b templates (§4.3), found offline with the real chat templates before any result.**
+   - With thinking off, these templates add an empty thought block to the generation prompt after a user turn, and
+     the rendered assistant turn does not contain it.
+   - So for S-find the target is defined as the tokens of the turn after its header, appended to the real
+     generation prompt ("spliced"): exactly what the model conditions on, followed by the call.
+   - Everywhere else (S-use, every e2b/e4b cell) the original definition holds ("direct"). Each scored cell records
+     its `mode`.
+   - Without this change all 31b and 12b S-find cells would have failed the prefix check.
+9. **Operational (no design change).**
+   - Each size runs isolated, with its own results file.
+   - A failed size no longer ends the session. The session stops after two consecutive self-check failures, a
+     second server freeze, or GPU memory not being released.
+   - The size order stays 31b → e4b → 12b → e2b: one server start per size, and 31b first because it writes the
+     words rung.

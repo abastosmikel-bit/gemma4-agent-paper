@@ -34,6 +34,8 @@ Run in this order (each row lists everything to attach):
 
 `notebooks/C01_smoke_timing__L4x4.ipynb` and `notebooks/C03_probe__L4x4.ipynb` both need only the output of `notebooks/C00_gold_check__CPU.ipynb`; they are independent of each other. `notebooks/C04_probe_followup__L4x4.ipynb` and `notebooks/C05_validation_12b__L4x4.ipynb` both need only the output of `notebooks/C03_probe__L4x4.ipynb`; they are independent of each other. `notebooks/C03v_test_verify__CPU.ipynb` (CPU) runs last so it can verify the edits of both C03 and C04.
 
+**Status:** done on Kaggle: `notebooks/C00_gold_check__CPU.ipynb` and `notebooks/C01_smoke_timing__L4x4.ipynb` (2026-10-31), `notebooks/C03_probe__L4x4.ipynb` (2026-11-01). Next: `notebooks/C04_probe_followup__L4x4.ipynb` and `notebooks/C05_validation_12b__L4x4.ipynb` (GPU; each needs the coordinator's OK on its estimate), then `notebooks/C03v_test_verify__CPU.ipynb`.
+
 When a notebook finishes, download the output file named in the table and commit it to `results/`.
 
 Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off, under Python 3.12 and with the real wheel install from the full wheelhouse: `tests/papermill_dryrun.sh <local_comp> <py3.12 venv> <out> C00 C01 C03 C04 C05 C03v` (WHEELHOUSE=<dir of the 41 wheels>).

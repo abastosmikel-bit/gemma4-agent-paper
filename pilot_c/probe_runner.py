@@ -516,7 +516,7 @@ def followup_cells(size: str, recs: list[dict], c03: dict, rescore_sizes: tuple[
              if r.get("size") == size and (r.get("ok") or r.get("why") == "unavailable")}
     done2 = {(r["task"], r["state"], r["cond"]) for r in c03["d2"]
              if r.get("size") == size and (r.get("ok") or r.get("why") == "unavailable")}
-    d1, d2, counts = [], [], {"design_d1": 0, "design_d2": 0, "control_d1": 0, "control_d2": 0, "rescore_d1": 0}
+    d1, d2, counts = [], [], {"design_d1": 0, "control_d1": 0, "rescore_d1": 0}
     for r in recs:
         c1, c2 = cells_for(r)
         design1 = [(st, c, rep) for (st, c, rep) in c1 if (r["instance_id"], st, c, rep) not in done1]
@@ -528,7 +528,7 @@ def followup_cells(size: str, recs: list[dict], c03: dict, rescore_sizes: tuple[
         d2 += [(r, st, c, 1) for (st, c) in d2_extra]
     for x in d1:
         counts[f"{x[4]['purpose']}_d1"] += 1
-    counts["d2_cells"] = len(d2)
+    counts["d2_cells"] = len(d2)   # design + extra depth-2 cells (each draws n samples)
     return d1, d2, counts
 
 

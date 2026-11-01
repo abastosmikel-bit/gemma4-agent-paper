@@ -472,7 +472,7 @@ Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermi
 - **Not verified:** that the HTTP 500 was an out-of-memory error, and real GPU-memory release timing. Both can only
   show on Kaggle; the next run records them.
 
-**Updated L4x4 estimate for `notebooks/C03_probe__L4x4.ipynb`: ≈2.2 h (range 1.7–3.0), hard stop 2.9 h.**
+**Updated L4x4 estimate for `notebooks/C03_probe__L4x4.ipynb`: ≈2.2 h (range 1.6–3.0), hard stop 2.9 h.**
 
 | Part | Time | Status |
 |---|---|---|

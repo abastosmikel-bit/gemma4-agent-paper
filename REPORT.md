@@ -614,3 +614,67 @@ the coordinator's Kaggle notebook outputs and committed them (`results/C00_gold_
   test checks the split on 31b, 12b and e4b.
 - `pilot_c/analyze_c05.py` was run once on synthetic outcomes (in /tmp), to check that it computes. Nothing from that was
   kept.
+
+## 17. 12b validation, `notebooks/C05_validation_12b__L4x4.ipynb` (2026-11-01): pre-registered analysis and two checks
+
+**Run:**
+- 2.02 L4x4 h (measured): both stages ran, with no freeze and no restart.
+- GPU used so far: **≈ 6.07 L4x4 h**.
+- Files: `results/C05_validation_12b.json` and `results/C05_analysis.json`, produced by `pilot_c/analyze_c05.py`. Single run, 1 seed.
+
+**Pre-registered (`docs/PLAN_C05_validation.md` §7):**
+- Resolved: O0 6/30, O-all 13/30. 7 tasks went fail→pass and 0 pass→fail (exact McNemar p = 0.016, descriptive).
+- **H6 is not supported.** The primary AUC, over the 21 tasks unresolved at O0 that have a predictor value (7 positives), is
+  0.43 [0.14, 0.76]; the secondary AUC (all tasks) is 0.46.
+  - 3 tasks lack the 12b Δ_use(L3−L0) because C03's time guard cut them; all 3 are negatives.
+- Exploratory predictor Δ_find(L2−L0): 0.50 [0.21, 0.81]; secondary 0.56.
+- With 7 positives the intervals are wide: these data cannot tell an AUC of 0.5 from one of 0.65.
+
+**Check 1, context-window errors (exploratory):**
+- How runs ended:
+
+  | Condition | context window exceeded | no error | time budget | tool-call budget |
+  |---|---|---|---|---|
+  | O0 | 14/30 | 9 | 3 | 4 |
+  | O-all | 9/30 | 16 | 3 | 2 |
+
+  - Paired: 3 tasks errored in both conditions, 11 only at O0, 6 only at O-all (exact McNemar p = 0.33).
+- Not more frequent than in C01 for this size. C01's 12b run errored on 1/3 tasks; C05's O0 run errored on 2 of the same
+  3. C01's overall 2/15 comes from the other sizes (e4b 0/6, 31b 0/3, e2b 1/3).
+- Mechanism, verified in the installed code (not by per-request token counts, which the probe does not log):
+  - The agent requests up to 16,384 output tokens (`max_output_tokens`, swegemma default, mapped by ADK to
+    `max_completion_tokens`). vLLM 0.19.1 rejects any request whose prompt + requested output exceeds 32,768
+    (`VLLMValidationError`, also seen in C05's server log). **So the effective prompt limit is 16,384 tokens.**
+  - ADK compacts only when the *previous* request's prompt was ≥ 14,336 tokens (`_latest_prompt_token_count`). It then
+    keeps the last 5 events.
+  - So one step that adds more than about 2,000 tokens (a 150-line read, a test run's output) can carry the prompt from
+    below 14,336 to above 16,384 before compaction ever runs. A large retained tail can also overflow right after a
+    compaction.
+  - The starter notebook uses the same settings, so this applies to every agent built on it.
+- Relation to compaction: 11 of the 23 errored runs never compacted. They died early (5–23 tool calls, median 10, against
+  37 / 29 for runs that did not error). The other 12 errored after ≥ 1 compaction.
+- **Relation to the hint effect:** all 7 fail→pass tasks are tasks whose O0 run ended in this error. Of the 14 such
+  tasks, the hint rescued 7. Of the 10 tasks that failed at O0 for any other reason (no error, time budget, tool-call
+  budget), it rescued 0 (Fisher exact p = 0.019, post hoc).
+  - So in this run the location hint's measured benefit runs through not dying of the context limit (shorter
+    exploration), which H6's predictor does not measure.
+
+**Check 2, task-prompt marker after compaction (exploratory):**
+- Not a measurement change: `common/runtime_probes.py`, `common/metrics.py` and the compaction code in
+  `pilot_c/kaggle_runner.py` are identical at C01 (49d66c7) and C05 (fe3e6c5).
+- C01 was not 0 either: 6/147 post-compaction requests, all from one run (e2b on fastapi_15589, 6/6). The 0/134 figure
+  leaves out e2b.
+- In C05 all 66 marked requests come from 4 runs (O0: fastapi_9753 25/25, fastapi_14616 22/22; O-all: fastapi_15589
+  12/12, rich_3063 7/7). It is all or nothing per run: once a run has the marker after compaction, every later request
+  has it.
+- In all 4, the probe recorded the event holding the task prompt as compacted. That is true of every compacted run:
+  C05 45/45, C01 10/10.
+- What the marker check counts: it looks for `Problem Statement:` in every message, including the summary, which ADK
+  inserts as a model message. The summary is free text written by the model from `user: …Problem Statement: …`.
+- Three of the 4 runs kept the marker through a second or third compaction, when only the summary and the last 5 events
+  remain. The same task behaved differently across runs (fastapi_9753: 0 marked requests in C01, 25/25 in C05).
+- **Settled reading:** the original prompt was compacted every time. In 5/55 compacted runs the summarizing model
+  re-stated the task under the same header, so the marker came back. How much of the statement it re-stated is not
+  measured: the summaries are not kept, and traces do not contain compaction events.
+- Measuring that would need the probe to record which role carries the marker (user prompt vs model summary) and how much
+  of the statement the summary contains, in a future agent run. That is no GPU work now; it only pays off in a later run.

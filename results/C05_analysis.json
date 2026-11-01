@@ -1,0 +1,297 @@
+{
+ "source": "results/C05_validation_12b.json",
+ "tasks_run": 30,
+ "stopped": null,
+ "stages": [
+  {
+   "stage": 1,
+   "tasks": [
+    "fastapi_9753",
+    "rich_3882",
+    "fastapi_15589",
+    "rich_2943",
+    "fastapi_5077",
+    "rich_3067",
+    "rich_3480",
+    "fastapi_14463",
+    "rich_3935",
+    "fastapi_14301",
+    "rich_4076",
+    "fastapi_5624",
+    "rich_4075",
+    "fastapi_13920",
+    "rich_3953"
+   ],
+   "n_common": 15,
+   "b_only": 3,
+   "a_only": 0,
+   "both": 3,
+   "delta": 3,
+   "mcnemar_exact_p": 0.25,
+   "discordant": 3
+  },
+  {
+   "stage": 2,
+   "tasks": [
+    "fastapi_14794",
+    "fastapi_9425",
+    "rich_3905",
+    "rich_3718",
+    "fastapi_14258",
+    "rich_3506",
+    "fastapi_11194",
+    "rich_4079",
+    "fastapi_14616",
+    "rich_3470",
+    "fastapi_13537",
+    "rich_2725",
+    "fastapi_15588",
+    "rich_3063",
+    "fastapi_14487"
+   ],
+   "n_common": 15,
+   "b_only": 4,
+   "a_only": 0,
+   "both": 3,
+   "delta": 4,
+   "mcnemar_exact_p": 0.125,
+   "discordant": 4
+  }
+ ],
+ "resolved": {
+  "O0": 6,
+  "O-all": 13
+ },
+ "flips": {
+  "fail_to_pass": 7,
+  "pass_to_fail": 0,
+  "both": 6,
+  "neither": 17
+ },
+ "flip_tasks": {
+  "fail_to_pass": [
+   "fastapi_11194",
+   "fastapi_13537",
+   "fastapi_5624",
+   "fastapi_9425",
+   "rich_2943",
+   "rich_3067",
+   "rich_3718"
+  ],
+  "pass_to_fail": [],
+  "both": [
+   "fastapi_14301",
+   "fastapi_14463",
+   "fastapi_14794",
+   "fastapi_9753",
+   "rich_2725",
+   "rich_3905"
+  ],
+  "neither": [
+   "fastapi_13920",
+   "fastapi_14258",
+   "fastapi_14487",
+   "fastapi_14616",
+   "fastapi_15588",
+   "fastapi_15589",
+   "fastapi_5077",
+   "rich_3063",
+   "rich_3470",
+   "rich_3480",
+   "rich_3506",
+   "rich_3882",
+   "rich_3935",
+   "rich_3953",
+   "rich_4075",
+   "rich_4076",
+   "rich_4079"
+  ]
+ },
+ "mcnemar_exact_p": 0.015625,
+ "predictors": {
+  "H6_d_use_L3-L0": {
+   "label": "pre-registered (H6)",
+   "n_with_value": 27,
+   "primary_unresolved_at_O0": {
+    "n": 21,
+    "positives": 7,
+    "negatives": 14,
+    "auc": 0.4286,
+    "ci": [
+     0.1444,
+     0.7551
+    ],
+    "dropped_resamples": 0,
+    "informative": true,
+    "criterion_auc_ge_0.65": false
+   },
+   "secondary_all_tasks": {
+    "n": 27,
+    "positives": 7,
+    "negatives": 20,
+    "auc": 0.4643,
+    "ci": [
+     0.1643,
+     0.7716
+    ],
+    "dropped_resamples": 1,
+    "informative": true
+   }
+  },
+  "x_d_find_L2-L0": {
+   "label": "exploratory",
+   "n_with_value": 28,
+   "primary_unresolved_at_O0": {
+    "n": 22,
+    "positives": 7,
+    "negatives": 15,
+    "auc": 0.5048,
+    "ci": [
+     0.2137,
+     0.8056
+    ],
+    "dropped_resamples": 0,
+    "informative": true,
+    "criterion_auc_ge_0.65": false
+   },
+   "secondary_all_tasks": {
+    "n": 28,
+    "positives": 7,
+    "negatives": 21,
+    "auc": 0.5646,
+    "ci": [
+     0.2695,
+     0.8438
+    ],
+    "dropped_resamples": 6,
+    "informative": true
+   }
+  }
+ },
+ "exploratory": {
+  "label": "exploratory",
+  "by_condition": {
+   "O0": {
+    "runs": 30,
+    "ended": {
+     "context_window_exceeded": 14,
+     "no_error": 9,
+     "time_budget": 3,
+     "tool_call_budget": 4
+    },
+    "cwe_without_any_compaction": 6,
+    "cwe_after_compaction": 8,
+    "tool_calls_at_cwe_without_compaction": [
+     5,
+     6,
+     9,
+     10,
+     10,
+     23
+    ],
+    "runs_with_compaction": 23,
+    "compacted_runs_where_task_prompt_event_was_compacted": 23,
+    "requests_after_first_compaction": 421,
+    "of_which_with_task_prompt_marker": 47,
+    "runs_with_marker_after_compaction": 2,
+    "marker_runs_all_or_nothing": true,
+    "marker_runs": [
+     {
+      "task": "fastapi_9753",
+      "after": 25,
+      "with_marker": 25,
+      "compactions": 2
+     },
+     {
+      "task": "fastapi_14616",
+      "after": 22,
+      "with_marker": 22,
+      "compactions": 2
+     }
+    ]
+   },
+   "O-all": {
+    "runs": 30,
+    "ended": {
+     "context_window_exceeded": 9,
+     "no_error": 16,
+     "time_budget": 3,
+     "tool_call_budget": 2
+    },
+    "cwe_without_any_compaction": 5,
+    "cwe_after_compaction": 4,
+    "tool_calls_at_cwe_without_compaction": [
+     7,
+     10,
+     11,
+     11,
+     12
+    ],
+    "runs_with_compaction": 22,
+    "compacted_runs_where_task_prompt_event_was_compacted": 22,
+    "requests_after_first_compaction": 385,
+    "of_which_with_task_prompt_marker": 19,
+    "runs_with_marker_after_compaction": 2,
+    "marker_runs_all_or_nothing": true,
+    "marker_runs": [
+     {
+      "task": "fastapi_15589",
+      "after": 12,
+      "with_marker": 12,
+      "compactions": 1
+     },
+     {
+      "task": "rich_3063",
+      "after": 7,
+      "with_marker": 7,
+      "compactions": 3
+     }
+    ]
+   }
+  },
+  "cwe_paired": {
+   "both": 3,
+   "O0_only": 11,
+   "O-all_only": 6
+  },
+  "unresolved_at_O0_by_how_O0_ended": {
+   "context_window_exceeded": {
+    "tasks": 14,
+    "resolved_with_hint": 7
+   },
+   "no_error": {
+    "tasks": 3,
+    "resolved_with_hint": 0
+   },
+   "time_budget": {
+    "tasks": 3,
+    "resolved_with_hint": 0
+   },
+   "tool_call_budget": {
+    "tasks": 4,
+    "resolved_with_hint": 0
+   }
+  },
+  "c01": {
+   "cwe_by_size": {
+    "e4b O0": 0,
+    "e4b O-all": 0,
+    "e2b O0": 1,
+    "12b O0": 1,
+    "31b O0": 0
+   },
+   "runs_with_compaction": 10,
+   "compacted_runs_where_task_prompt_event_was_compacted": 10,
+   "requests_after_first_compaction": 147,
+   "of_which_with_task_prompt_marker": 6,
+   "marker_runs": [
+    {
+     "run": "e2b O0",
+     "task": "fastapi_15589",
+     "after": 6,
+     "with_marker": 6
+    }
+   ]
+  }
+ }
+}

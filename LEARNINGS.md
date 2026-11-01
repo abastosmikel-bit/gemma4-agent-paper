@@ -34,3 +34,25 @@ is rejected, pull and retry.** Mark anything not verified in the real runtime as
   - Source: Kaggle run of `notebooks/C03_probe__L4x4.ipynb` (log from the coordinator). (pilot C)
 - 2026-10-31 · Correction and extension of the chat-template entry: with thinking off, **both the 12b and the 31b** templates add an empty thought block (`<|channel>thought\n<channel|>`) to the generation prompt after a user turn, and the rendered assistant turn does not contain it. After a tool response nothing is added; e2b/e4b never add it. Any "context + generation prompt is a token prefix of context + answer" assumption breaks for 12b/31b, e.g. in likelihood scoring; splice the answer tokens after the real generation prompt instead. Source: real templates rendered locally with transformers 5.13.1 (pilot C).
 - 2026-10-31 · `prompt_logprobs` on L4: the first scoring request to 31b (TP=4, `gpu_memory_utilization=0.9`) returned HTTP 500. The cause was not captured: the client dropped the response body and `VllmServer.stop()` deleted the log. Hypothesis, **unverified**: out of memory, because vLLM 0.19.1 computes a full-vocabulary (262k) log-softmax per prompt token in chunks of `max_num_batched_tokens` (default 2048 on GPUs < 70 GB), with only ~10% of memory left. Pilot C's probe servers now use `gpu_memory_utilization=0.75`, `--max-num-batched-tokens 1024`, keep HTTP error bodies, and save server logs. Source: Kaggle C03 log; vLLM 0.19.1 `engine/arg_utils.py`. (pilot C)
+- 2026-11-01 · **Location helps finding, not using (probe; single run, 30 tasks, e4b/12b/31b).** Naming the gold file + function raises the log-probability of the correct `read_file` by a median +19 / +25 / +33 nats (e4b / 12b / 31b). Once the agent has read the gold code, the same hint changes the log-probability of the correct edit by only −1.7 to +1.9 nats. What raises the edit is what to change: the change in words +11 to +15, the exact diff +29 to +42; the reproduction-test source adds 0–5. Source: `results/C03_tables.md` T1/T2 (pilot/c-bottleneck 70e8d9b), `notebooks/C03_probe__L4x4.ipynb`. (pilot C)
+- 2026-11-01 · **Graph-tool output names the file, not the function.** The harness graph's node names are dotted module paths (e.g. `fastapi.sse._check_id_no_null`), so any `get_code_subgraph`/`get_code_neighbors` output tells the model the file.
+  - Moving the graph's focus to another function in the same file lowers the correct `read_file`'s log-probability by only 1.0–1.6 nats; the same swap in a text hint costs 11–20 nats.
+  - At depth 2, a graph turn raises "reads the gold file" (31b 43→70%, e4b 37→83%) but barely "reads the gold function" (31b 10→20%, e4b 13→33%).
+  - Source: `results/C03_tables.md` T3/T6. Relevant to pilot B. (pilot C)
+- 2026-11-01 · **Likelihood comparisons need contexts with the same ending.** A context that ends in a tool response scores the same target differently from one that ends in a user turn. With thinking off, the 31b/12b templates also add an empty thought block after a user turn, but not after a tool response.
+  - Evidence 1: at S-use (gold file already read), one extra graph tool round-trip raised the edit's log-probability by +5 (31b) and +8 (12b) nats, whether the graph's focus was right or wrong.
+  - Evidence 2: at S-find, 12b's graph conditions scored 11 nats below the plain-text file hint, even though both name the gold file.
+  - Rule: compare a tool-output condition with a control that has the same ending (e.g. a graph turn on an unrelated file), not with a text condition.
+  - Source: `results/C03_tables.md` T1/T6. (pilot C)
+- 2026-11-01 · **31b does not edit right after reading the right code; e4b does.**
+  - At the "gold code just read" state with no hint, 0/60 of 31b's sampled first actions are `edit_file`. The rest: 53% `read_file`, 35% `run_command`, 8% `write_file` of a new script. With the exact diff in the prompt: 25/54 edits.
+  - e4b edits at once in 58% (no hint) to 88% (file + function).
+  - When 31b does edit (L5), 88% of edits are on target and 68% exact (e4b: 83% / 54%).
+  - So a next-action success rate measures willingness to edit as much as ability: report P(edit now) and quality given an edit separately. Larger models likely need more steps before their first edit.
+  - Source: `results/C03_tables.md` T4/T7. Relevant to pilots A and D. (pilot C)
+- 2026-11-01 · **Probe server settings held on L4 x4.** With `gpu_memory_utilization=0.75` and `--max-num-batched-tokens 1024`:
+  - 2,486 `prompt_logprobs` cells (~4k-token contexts) ran with 0 server errors. This is consistent with the earlier HTTP 500 being out of memory, but does not prove it.
+  - Throughput at 16 concurrent requests: depth-1 cells per minute 31b 16.1, 12b 26.8, e4b 39.1; depth-2 samples (thinking ≤ 4,096 tokens) per minute 31b 25.9, e4b 42.5.
+  - The process-group stop left 0 processes after all three servers.
+  - Rescoring the same cell differs by a median 0.2–0.6 nats (max 5.6, 12b), so single-task differences of a few nats are noise: use medians over tasks.
+  - Source: `results/C03_probe.json`. (pilot C)

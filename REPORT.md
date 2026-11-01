@@ -483,3 +483,60 @@ Kaggle UI. All four pass a papermill dry run under the new names (`tests/papermi
 | words | 0.05 h | estimated |
 | depth 1 | ~0.75 h | estimated; contexts are ~4–4.5k tokens per the real templates, smaller than the 7k assumed, which offsets the smaller prefill chunks |
 | depth 2 | ~0.85 h | estimated |
+
+## 15. Probe run of `notebooks/C03_probe__L4x4.ipynb` (2026-11-01): analysis, checks, follow-up
+
+**Run:** 2.92 L4x4 h (measured). 31b, e4b and 12b at depth 1; 31b and e4b at depth 2. The session time guard skipped 12b depth 2, e2b, and 12b depth 1 for 3 of 30 tasks. No freezes, no server errors, 0 processes left after each stop. GPU used in total so far: **≈3.21 L4x4 h**.
+Files: `results/C03_probe.json` (raw, task IDs and numbers only), `results/C03_tables.md`, `results/C03_analysis.json`, `results/figures/C03_fig{1,2,3}_*.{png,svg}`. Produced by `pilot_c/analyze_c03.py`; stats helpers in `common/stats.py` (checked against statsmodels, `tests/test_stats.py`). Single run, 30 tasks.
+
+**Condition codes (from `pilot_c/probe.py:rung_text`):**
+- L1–L5 are cumulative. L1 gives the file. L2 gives the file and function; its line replaces L1's. L3 adds the reproduction test, L4 adds the change in words, and L5 adds the exact diff.
+- T (test only), W (words only) and G-json/G-edges/G-adj are single hints: no text location. The graph is one synthetic `get_code_subgraph` turn. Its node names are dotted module paths, so every graph also names the file.
+- The X controls are not all single:
+  - X-file is a wrong file alone.
+  - X-func is the right file plus a wrong function.
+  - X-graph is a graph whose focus is a wrong function in the same file, so it still shows the gold file.
+  - X-test is L2 plus a wrong test, and X-words is L3 plus wrong words.
+
+**Pre-registered tests (T2 in `results/C03_tables.md`; e2b missing, so trends use 3 sizes; H6 not testable):**
+- H1 is supported for all three sizes. Δ_find(L2−L0) = +19 / +25 / +33 nats (e4b / 12b / 31b); Δ_use(L2−L0) = +1.9 / −1.7 / −1.5.
+- H2 is not supported. Δ_use(L4−L3) does not rise with size (+7 / +12 / +9). Δ_use(L5−L4) rises with size (+16 / +21 / +23), the opposite of the prediction.
+- H3, graph below L2: supported for all three sizes. e4b encodings: edges/adjacency beat JSON by +0.6 / +0.8 nats (supported, small). 31b encodings: not supported, because edges − JSON = +1.4 nats, more than the 0.3 margin.
+- H4, compared with L0: supported only for X-file. X-func and X-graph raise the target because they contain the right file. Compared with their matched correct rung, all wrong hints cost 9–20 nats at S-find. The "harm shrinks with size" trend is not supported.
+- H5 is not supported for e4b. Tasks with at least 1 of 2 samples on_target: L2 63%, L5 74%. The L2 part (≤ 20%) fails: after reading the gold code, e4b's edits overlap the gold lines often even without hints. Exact edits: L2 7%, L5 52%.
+
+**Check (a), graph gain (exploratory, T6 / figure 3):**
+- At S-find, most of the graph gain is the file, not "content-independent". X-graph keeps the file. Moving the focus to another function in that file costs only 1.0–1.6 nats; the same swap in text costs 11–20 nats. At depth 2, G-json raises hit_file (31b 43→70%, e4b 37→83%) but barely hit_func.
+- There is also an ending effect that the design cannot separate from file content. Graph contexts end in a tool response, text contexts in a user turn (plus, for 31b/12b, an empty thought block).
+  - Evidence 1: at S-use, where the file is already read, a graph turn adds +5 (31b) / +8 (12b) nats with the right or the wrong focus.
+  - Evidence 2: at S-find, 12b's graph conditions score 11 nats below the text file hint.
+- A graph control in an unrelated file (G-null) would separate the two.
+
+**Check (b), willingness to edit (exploratory, T4 / T7 / figure 2):**
+- 31b's first action at S-use, L0: 0/60 edit_file. The rest were 53% read_file, 35% run_command, and 8% write_file of new files (the "5/60" are these; none touched the gold file).
+- With the exact diff, 31b edits in 46% of samples; e4b edits in 58–88% of samples in every correct-hint condition. When 31b edits at L5, 88% of its edits are on target and 68% exact (e4b: 83% / 54%).
+- Proposed handling:
+  1. Report P(edit now) and the quality of edits given an edit separately; never compare unconditional on_target across sizes.
+  2. Show conditional rates only with ≥ 5 edits, because they are selected on the model's own choice.
+  3. For size comparisons of ability, split depth-1 log p into the action part (up to the tool name) and the arguments part; this needs per-token log-probs, which the probe did not keep.
+  4. Keep H5 as registered (e4b edit rates are high), with the edit rate beside it.
+
+**Follow-up (cheapest; reuses C03's records, words and captured contexts from its output, so no 31b words step and no capture). Estimates from this run's measured times:**
+
+| Part | L4x4 h | Basis |
+|---|---|---|
+| install + reload records/contexts | 0.05 | estimated |
+| e2b: start, depth 1, depth 2 (+ X-graph at S-find) | 0.71 | e4b measured: start 264 s, d1 21.9 min, d2 17.9 min |
+| 12b: start, depth 1 for the 3 missing tasks, depth 2 (+ X-graph) | 0.53 | 12b start 197 s and d1 rate measured; d2 interpolated between e4b and 31b |
+| 31b: start + X-graph depth 2 (30 samples) | 0.12 | 31b start 343 s measured |
+| e4b: start + X-graph depth 2 (30 samples) | 0.09 | measured start |
+| stops, GPU-memory waits | 0.04 | estimated |
+| **Core total** | **≈ 1.5 (range 1.25–1.9), hard stop 2.0** | |
+| optional: G-null graph control, depth 1 both states + depth 2 S-find, all sizes | +0.2 | for check (a) |
+| optional: split log p (action vs arguments) at S-use, L0/L2/L5/W, 31b/e4b/12b re-score | +0.25 | for check (b); doubles as a replication |
+
+**12b validation (PLAN §8):**
+- Worth running: it is the only link from the probe to resolved tasks.
+- Not built yet: it needs a notebook and a PLAN addendum (no GPU).
+- Cost: ≈ 1.2 L4x4 h (0.6 h if it stops at 15 tasks), hard stop 1.5 h. Per-task 12b agent time is still unmeasured, because `notebooks/C01_smoke_timing__L4x4.ipynb` has not run.
+- The registered predictor, Δ_use(L3−L0), is weak for 12b: median −0.2, IQR −3.3 to +4.5, while L0 rerun noise reaches 5.6 nats. The validation hint (file + function + test names) maps onto Δ_find(L2−L0) (median +25, IQR +19 to +32). Adding it as an exploratory second predictor is the coordinator's decision.

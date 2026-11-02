@@ -61,7 +61,7 @@ output file.
 | `C06_analysis.json`, `C06_tables.md`, `C06_fig1_how_runs_ended.png`, `C06_fig2_hint_effect.png`, `C06_fig3_summary_retention.png` | `python -m pilot_c.analyze_c06 results/C06_validation_fix_12b.json results/C05_validation_12b.json results/C06_predictors_12b.json results/` | C06 + C05 outputs, `results/C06_predictors_12b.json` |
 | `C03v_analysis.json`, `C03v_tables.md`, `C03v_fig_solves.png` | `python -m pilot_c.analyze_c03v results/C03v_test_verify.json results/C03_probe.json results/C04_probe_followup.json results/` | C03v + C03 (+ C04) outputs |
 | `results/C06_predictors_12b.json` | `python -c "import json; from pilot_c.analyze_c06 import build_predictors as b; json.dump({'source': 'results/C03_probe.json (12b depth-1 design cells, rep 1); built by pilot_c.analyze_c06.build_predictors', 'tasks': b('results/C03_probe.json')}, open('results/C06_predictors_12b.json','w'), indent=1)"` | `results/C03_probe.json` |
-| `results/C00_audit.md` (reason per invalid task) | see §3 | `results/C00_gold_check.json`, `results/C00_audit_imports.json` |
+| `results/C00_audit.md`, `results/C00_audit.json` (reason per invalid task) | `python -m pilot_c.audit_table` | `results/C00_gold_check.json`, `results/C00_audit_imports.json` |
 
 Notes:
 - The C04, C06 and C03v notebooks write these same files in their last cell, so a Kaggle run also yields them directly.
@@ -79,7 +79,9 @@ Notes:
   Run it in the starter's Python 3.12 environment with the wheelhouse installed, and with the competition data at
   `/kaggle/input/competitions/gemma-4-developer-agent`. It runs each task twice, first as the harness does and then with
   the repo's `src/` first on the import path, each with the gold patch and with no patch.
-- `results/C00_audit.md` combines both.
+- `python -m pilot_c.audit_table` combines both into `results/C00_audit.md` (one row per invalid task: category, reason,
+  evidence, certainty). The causes for the eight tasks whose gold patch fails for reasons other than imports or missing
+  modules were read from local reruns of the gold verification; their test output is not committed.
 
 ## 4. Context-window overflow repro (CPU, seconds; private until submission)
 

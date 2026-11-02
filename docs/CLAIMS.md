@@ -112,12 +112,34 @@ listed here or in `RESULTS.md` is not used. Pull before editing.
   - 3 tasks pass with no patch.
   - 34 fastapi tasks fail on a missing `inline_snapshot` (28) or `dirty_equals` (9) (3 miss both).
   - 8 requests tasks need the missing `httpbin` fixture.
-- **Source.** `results/C00_gold_check.json` (e0c8055), from `notebooks/C00_gold_check__CPU.ipynb` at 6cbc071; per-task
-  reasons in `results/C00_audit.md` (added with the src-layout check below).
+  - **Reasons for all 58 invalid tasks** (`results/C00_audit.md`):
+
+    | Category | Tasks |
+    |---|---|
+    | A. test module missing from the image (`inline_snapshot`, `dirty_equals`) | 34 |
+    | B1. tests import the host's installed copy of requests/httpx instead of the repo (src layout); valid once the repo's `src/` is imported | 6 |
+    | B2. the same import problem, and the httpbin fixture is also missing | 8 |
+    | C. async test plugin missing | 2 |
+    | D. environment-dependent styled output (rich) | 5 |
+    | E. required test skipped on the sandbox's Python 3.12 | 1 |
+    | F. tests pass with no patch | 2 |
+
+  - **The import problem** (pilot D's finding, checked here): in all 14 requests/httpx tasks the test run imports the
+    host's installed copy (requests 2.34.2, httpx 0.28.1 locally), so the patch cannot change the outcome. With the
+    repo's `src/` first, 6 of them pass with the gold patch and fail without it. This covers all 4 requests tasks whose
+    gold patch fails, httpx_3672, and requests_6644 (which passed with no patch on Kaggle). Controls (fastapi, rich;
+    package at the repo root) import the repo's copy.
+- **Source.** `results/C00_gold_check.json` (e0c8055), from `notebooks/C00_gold_check__CPU.ipynb` at 6cbc071.
+  Per-task reasons in `results/C00_audit.md` and `results/C00_audit.json` (9a7d533; `pilot_c/audit_table.py`). Import
+  check in `results/C00_audit_imports.json` (`pilot_c/audit_imports.py`, local Python 3.12 + wheelhouse).
 - **Shown in.** `results/C00_audit.md` (one row per invalid task); `RESULTS.md` rows of 2026-10-31.
 - **Caveats.**
   - The sandbox venv inherits the host's site-packages (`system_site_packages=True`), so validity depends on the image:
     73/129 locally vs 74/129 on Kaggle.
   - Valid means only that the tests can tell the gold patch from no patch; the scorer's hidden test set is a different
     set.
+  - The import check ran locally (Python 3.12, the same wheelhouse), not on Kaggle. The Kaggle image has a different
+    installed requests, which is why gold/no-patch outcomes differ between local and Kaggle for the same tasks. That
+    difference is itself evidence that the patch has no effect.
+  - Category D's causes are "likely" (IPython lexer) or "not verified" (markdown styling), per task in the table.
 - **Status.** Supported for the dev set on the Kaggle image. **Pending: D** (held-out tasks).

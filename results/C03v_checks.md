@@ -70,4 +70,4 @@ Per-task pass share = passing samples / 2. Δ = mean over tasks of the per-task 
 | 31b/X-func | 60 | 0 | 0 | 0 | 0 | — | 0 | 0 / 0 / 0 |
 | 31b/X-test | 60 | 1 | 0 | 0 | 1 | 100% | 0 | 1 / 0 / 1 |
 
-`exact` compares the edited file with the scored gold edit, which covers only the gold function; `outside_edits` in `C03_probe.json` counts gold-patch lines outside it (non-zero for 12 of the 30 tasks), so an exact edit can still fail the tests.
+`exact` compares the edited file with the scored gold edit, which covers only the gold function; the gold patch also changes lines outside it in 11 of 30 tasks (`outside_edits` in `C03_probe.json`), so an exact edit can still fail the tests.

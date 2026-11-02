@@ -843,5 +843,9 @@
    "tasks_any_exact": 0,
    "tasks_any_pass_no_exact": 1
   }
- }
+ },
+ "tasks_with_gold_lines_outside_scored_edit": [
+  11,
+  30
+ ]
 }

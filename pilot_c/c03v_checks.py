@@ -50,6 +50,11 @@ def checks(verify: dict, probe_files: list[str]) -> dict:
     solved = {(r["size"], r["cond"], r["task"], r["sample"]): bool(r["solves"]) for r in verify["rows"]}
     sizes = [s for s in SIZES if any(k[0] == s for k in S)]
     out: dict = {"K1": {}, "K2": {}, "K3": {}}
+    for f in probe_files:
+        oe = json.loads(Path(f).read_text()).get("outside_edits") if f and Path(f).exists() else None
+        if oe:
+            out["tasks_with_gold_lines_outside_scored_edit"] = [sum(1 for v in oe.values() if v), len(oe)]
+            break
 
     for size in sizes:
         for cond in K1_CONDS:
@@ -162,9 +167,10 @@ def tables_md(C: dict) -> str:
         L.append(f"| {k} | {v['samples']} | {v['passes']} | {v['exact']} | {v['passes_and_exact']} | {v['passes_not_exact']} | "
                  f"{pc(v['share_of_passes_missed_by_exact'])} | {v['exact_not_passes']} | "
                  f"{v['tasks_any_pass']} / {v['tasks_any_exact']} / {v['tasks_any_pass_no_exact']} |")
-    L += ["", "`exact` compares the edited file with the scored gold edit, which covers only the gold function; "
-          "`outside_edits` in `C03_probe.json` counts gold-patch lines outside it (non-zero for 12 of the 30 tasks), so an "
-          "exact edit can still fail the tests."]
+    oe = C.get("tasks_with_gold_lines_outside_scored_edit")
+    L += ["", "`exact` compares the edited file with the scored gold edit, which covers only the gold function"
+          + (f"; the gold patch also changes lines outside it in {oe[0]} of {oe[1]} tasks (`outside_edits` in "
+             "`C03_probe.json`)" if oe else "") + ", so an exact edit can still fail the tests."]
     return "\n".join(L) + "\n"
 
 

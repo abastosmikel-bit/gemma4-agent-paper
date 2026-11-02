@@ -678,3 +678,62 @@ the coordinator's Kaggle notebook outputs and committed them (`results/C00_gold_
   measured: the summaries are not kept, and traces do not contain compaction events.
 - Measuring that would need the probe to record which role carries the marker (user prompt vs model summary) and how much
   of the statement the summary contains, in a future agent run. That is no GPU work now; it only pays off in a later run.
+
+## 18. C06 built, C04 revised, D estimates (2026-11-02; no GPU used)
+
+**`notebooks/C06_validation_fix_12b__L4x4.ipynb`** (pushed at 7271963; plan and analysis frozen there:
+`docs/PLAN_C06_validation_fix.md`, `pilot_c/analyze_c06.py`):
+- C05 rerun with one change: `max_output_tokens` 8192, so the prompt limit is 24,576 tokens.
+- New instrumentation (`common/runtime_probes.py`): where the task-prompt marker sits after compaction (original prompt /
+  summary / elsewhere), how much of the statement each summary keeps (word 5-gram and word recall), the requested output
+  tokens, the prompt tokens the server reports, and context errors. Summary text is saved under `private/`.
+- **Found in the dry run:** ADK hands a compaction summary to the model as a *user* message (`For context: [model] said:
+  …`), so the probe identifies summaries by their text, not by role. (`LEARNINGS.md` on `paper/main`.)
+- The notebook's last cell runs the frozen analysis: crashes per condition vs C05, the hint effect with crashes counted as
+  failures and with crashes removed, H6 on C06's outcomes, the compaction/summary numbers, and three figures. It needs only
+  numpy, plus matplotlib for the figures.
+  - Tested on synthetic data (`tests/test_analyze_c06.py`). On the real C05 file it reproduces C05's counts: 14 / 9 crashes,
+    7 vs 0 flips, 10 crash-free task pairs.
+- Estimate ≈ 2.4 L4x4 h (2.0–2.6), hard stop 2.9 h. It comes from C05's measured task times, with the crashed runs
+  replaced by draws from the non-crashed ones; the batch model reproduces C05's four batches exactly.
+- Later commits change only modules C06 does not use. The notebook to run is the one at 7271963 or later.
+
+**`notebooks/C04_probe_followup__L4x4.ipynb`, revised:**
+- 12b, 31b and e4b; no e2b.
+- The action/arguments split is added at S-find (L0, L1, L2, G-json, X-graph re-scored); no empty-graph control.
+- The last cell runs `pilot_c/analyze_c04.py`, tested on synthetic data built around the real C03 file. It writes the
+  pre-registered tables and figures recomputed with C04's design cells merged in (`C03C04_*`: 12b complete, 12b depth 2)
+  and the exploratory additions (`C04_*`: G-null decomposition, X-graph and G-null at depth 2, action vs arguments,
+  re-score agreement with C03).
+- Dry run: all content checks pass.
+
+| Size | depth-1 cells (design / re-score / control) | depth-2 samples | L4x4 h |
+|---|---|---|---|
+| 12b | 84 / 246 / 60 | 840 | 0.72 |
+| 31b | 0 / 270 / 60 | 60 | 0.49 |
+| e4b | 0 / 270 / 60 | 60 | 0.25 |
+| setup, stops | | | 0.06 |
+| **total** | | | **≈ 1.5 (range 1.3–1.8), hard stop 2.0** |
+
+**D estimates:**
+- D1 and D2 are not specified anywhere I may read: paper/main has only the export format, `docs/PROBE_INPUT.md`, and
+  pilot D's branch is off-limits. So below are the held-out probe options and per-unit costs to price D1/D2 with.
+- **Held-out probe** (C03's design on D's held-out tasks, after a CPU gold check like C00). Per task, from C03's measured
+  rates:
+
+  | Variant | 31b | 12b | e4b | Per task, 3 sizes |
+  |---|---|---|---|---|
+  | full (29 depth-1 cells + 26 depth-2 samples) | 0.047 h | 0.032 h | 0.023 h | 0.10 h |
+  | depth 1 only (29 cells) | 0.030 h | 0.018 h | 0.012 h | 0.06 h |
+  | depth-1 core (13 cells: find L0/L1/L2/W/G-json/G-null/X-func, use L0/L2/W/L5/G-json/G-null) | 0.013 h | 0.008 h | 0.006 h | 0.027 h |
+
+  - Fixed per session: 0.32 h (3 server starts 0.22, 31b words step 0.05, install and stops 0.05), plus 0.005 h per task
+    for records and capture.
+  - For 30 tasks: full ≈ 3.5 h, depth 1 ≈ 2.2 h, depth-1 core ≈ 1.3 h. For 20 tasks: 2.4 / 1.6 / 0.95 h.
+  - Not built yet. It would be a C03 variant reading D's export as a Kaggle dataset, dry-run on a synthetic export made
+    from dev tasks, with a standalone analysis cell.
+- **Agent rollouts** (official agent, 40 calls / 15 min), per task-run:
+  - 12b ≈ 0.032 h at concurrency 5 (C05: 60 runs in 1.90 h of batches); ≈ 0.039 h with `max_output_tokens` 8192 (C06
+    estimate).
+  - 31b ≈ 0.035 h and e4b ≈ 0.013 h at concurrency 3 (C01, n = 3, rough).
+  - Plus per session: server start 0.06–0.10 h per size, and install and setup 0.05 h.

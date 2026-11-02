@@ -506,12 +506,14 @@ def load_c03_inputs() -> tuple[list[dict], dict[str, dict], dict]:
 
 
 def followup_cells(size: str, recs: list[dict], c03: dict, rescore_sizes: tuple[str, ...], graph_controls: tuple = pb.FOLLOWUP_D1,
-                   d2_extra: tuple = pb.FOLLOWUP_D2, rescore_use: tuple = pb.RESCORE_USE) -> tuple[list[tuple], list[tuple], dict]:
+                   d2_extra: tuple = pb.FOLLOWUP_D2, rescore_use: tuple = pb.RESCORE_USE,
+                   rescore_find: tuple = ()) -> tuple[list[tuple], list[tuple], dict]:
     """Cells for one size in the follow-up:
       design  : every pre-registered C03 cell (PLAN §4.6) that C03 did not complete for this size (time guard, skipped
                 size). 'unavailable' cells stay unavailable.
       control : G-null at S-find and S-use (depth 1), X-graph and G-null at S-find (depth 2, n=1)  [exploratory]
-      rescore : S-use L0/L2/L5/W again, to split log p into action and arguments (rescore_sizes only) [exploratory]"""
+      rescore : S-use L0/L2/L5/W (and `rescore_find` at S-find) again, to split log p into action and arguments
+                (rescore_sizes only) [exploratory]"""
     done1 = {(r["task"], r["state"], r["cond"], r.get("rep", 1)) for r in c03["d1"]
              if r.get("size") == size and (r.get("ok") or r.get("why") == "unavailable")}
     done2 = {(r["task"], r["state"], r["cond"]) for r in c03["d2"]
@@ -524,6 +526,7 @@ def followup_cells(size: str, recs: list[dict], c03: dict, rescore_sizes: tuple[
         d1 += [(r, st, c, 1, {"purpose": "control"}) for (st, c) in graph_controls]
         if size in rescore_sizes:
             d1 += [(r, "use", c, 1, {"purpose": "rescore"}) for c in rescore_use if ("use", c, 1) not in design1]
+            d1 += [(r, "find", c, 1, {"purpose": "rescore"}) for c in rescore_find if ("find", c, 1) not in design1]
         d2 += [(r, st, c, n) for (st, c, n) in c2 if (r["instance_id"], st, c) not in done2]
         d2 += [(r, st, c, 1) for (st, c) in d2_extra]
     for x in d1:

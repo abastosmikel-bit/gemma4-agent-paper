@@ -497,7 +497,7 @@ def _legend(fig, sizes):
     fig.legend(handles=h, loc="upper right", bbox_to_anchor=(1.0, 1.0), ncol=len(sizes), frameon=False, fontsize=8, labelcolor=INK)
 
 
-def figures(D: Data, A: dict, outdir: Path) -> list[str]:
+def figures(D: Data, A: dict, outdir: Path, stem: str = "C03") -> list[str]:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -519,9 +519,9 @@ def figures(D: Data, A: dict, outdir: Path) -> list[str]:
     _legend(fig, D.sizes)
     fig.tight_layout(rect=(0, 0, 1, 0.955))
     for ext in ("png", "svg"):
-        p = outdir / f"C03_fig1_depth1_deltas.{ext}"
+        p = outdir / f"{stem}_fig1_depth1_deltas.{ext}"
         fig.savefig(p, dpi=200, facecolor=SURF)
-        made.append(str(p.relative_to(ROOT)))
+        made.append(p.name)
     plt.close(fig)
 
     u = A["depth2"]["use"]
@@ -542,9 +542,9 @@ def figures(D: Data, A: dict, outdir: Path) -> list[str]:
     _legend(fig, D.d2_sizes)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     for ext in ("png", "svg"):
-        p = outdir / f"C03_fig2_depth2_use_edit.{ext}"
+        p = outdir / f"{stem}_fig2_depth2_use_edit.{ext}"
         fig.savefig(p, dpi=200, facecolor=SURF)
-        made.append(str(p.relative_to(ROOT)))
+        made.append(p.name)
     plt.close(fig)
 
     G = A["exploratory"]["graph"]
@@ -563,25 +563,35 @@ def figures(D: Data, A: dict, outdir: Path) -> list[str]:
     _legend(fig, D.sizes)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     for ext in ("png", "svg"):
-        p = outdir / f"C03_fig3_graph_vs_text.{ext}"
+        p = outdir / f"{stem}_fig3_graph_vs_text.{ext}"
         fig.savefig(p, dpi=200, facecolor=SURF)
-        made.append(str(p.relative_to(ROOT)))
+        made.append(p.name)
     plt.close(fig)
     return made
 
 
-def main(path: str = "results/C03_probe.json") -> None:
-    d = json.load(open(ROOT / path))
+def analyze_all(d: dict, source: str, out_dir: Path, fig_dir: Path, stem: str = "C03") -> dict:
+    """Every table and figure of this module for a probe result dict `d` (C03's, or C03 merged with C04's design
+    cells); writes <stem>_analysis.json, <stem>_tables.md and <stem>_fig*.png/svg."""
     D = Data(d)
-    A = {"source": path, "plan_commit": d["plan_commit"], "sizes_with_depth1": D.sizes, "sizes_with_depth2": D.d2_sizes,
+    A = {"source": source, "plan_commit": d["plan_commit"], "sizes_with_depth1": D.sizes, "sizes_with_depth2": D.d2_sizes,
          "depth1": depth1_tables(D)}
     A["depth2"] = depth2_tables(D)
     A["hypotheses"] = hypotheses(D, A["depth2"])
     A["exploratory"] = {"graph": graph_check(D, A["depth2"]), "edit": edit_check(A["depth2"])}
-    A["figures"] = figures(D, A, ROOT / "results" / "figures")
-    (ROOT / "results" / "C03_analysis.json").write_text(json.dumps(A, indent=1, ensure_ascii=False, default=str))
-    (ROOT / "results" / "C03_tables.md").write_text(tables_md(D, A))
-    print("wrote results/C03_analysis.json, results/C03_tables.md,", ", ".join(A["figures"]))
+    try:
+        A["figures"] = figures(D, A, fig_dir, stem)
+    except ImportError as e:   # matplotlib missing: tables still written
+        A["figures"] = [f"skipped: {e}"]
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{stem}_analysis.json").write_text(json.dumps(A, indent=1, ensure_ascii=False, default=str))
+    (out_dir / f"{stem}_tables.md").write_text(tables_md(D, A).replace("Source: `results/C03_probe.json`", f"Source: `{source}`"))
+    print(f"wrote {out_dir}/{stem}_analysis.json, {stem}_tables.md,", ", ".join(A["figures"]))
+    return A
+
+
+def main(path: str = "results/C03_probe.json") -> None:
+    analyze_all(json.load(open(ROOT / path)), path, ROOT / "results", ROOT / "results" / "figures", "C03")
 
 
 if __name__ == "__main__":

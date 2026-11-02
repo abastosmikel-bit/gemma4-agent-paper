@@ -56,19 +56,23 @@ elif key == "C03v":
 elif key == "C04":
     import os
     by = lambda rows, **kw: [r for r in rows if r.get("ok") and all(r.get(k) == v for k, v in kw.items())]
-    files = {z: os.path.exists(f"/kaggle/working/C04_probe_followup_{z}.json") for z in ("e2b", "12b", "31b", "e4b")}
+    sizes = ("12b", "31b", "e4b")
+    files = {z: os.path.exists(f"/kaggle/working/C04_probe_followup_{z}.json") for z in sizes}
     split = [r for r in d["d1"] if r.get("ok")]
+    outs = ("C04_analysis.json", "C04_tables.md", "C03C04_tables.md", "C04_fig4_graph_control.png", "C04_fig5_action_args.png",
+            "C03C04_fig1_depth1_deltas.png")
     checks = {
-        "no failed size": not [s for s in d["sizes"] if s.get("error") or s.get("skipped")] and not d.get("stopped"),
+        "no failed size, no e2b": not [s for s in d["sizes"] if s.get("error") or s.get("skipped")] and not d.get("stopped")
+                                  and not [r for r in d["d1"] if r.get("size") == "e2b"],
         "per-size files": all(files.values()),
-        "e2b design d1+d2": len(by(d["d1"], size="e2b", purpose="design")) > 0 and len(by(d["d2"], size="e2b")) > 0,
         "12b tail d1 + d2": len(by(d["d1"], size="12b", purpose="design")) > 0 and len(by(d["d2"], size="12b", cond="L5")) > 0,
         "no design cells for 31b/e4b": not [r for r in d["d1"] if r.get("size") in ("31b", "e4b") and r.get("purpose") == "design"],
-        "G-null d1 all sizes": all(by(d["d1"], size=z, cond="G-null") for z in files),
-        "X-graph and G-null d2 all sizes": all(by(d["d2"], size=z, cond=c) for z in files for c in ("X-graph", "G-null")),
-        "rescore 31b/e4b/12b only": sorted({r["size"] for r in by(d["d1"], purpose="rescore")}) == ["12b", "31b", "e4b"],
+        "G-null d1 all sizes": all(by(d["d1"], size=z, cond="G-null") for z in sizes),
+        "X-graph and G-null d2 all sizes": all(by(d["d2"], size=z, cond=c) for z in sizes for c in ("X-graph", "G-null")),
+        "rescore at find and use, 3 sizes": all(by(d["d1"], size=z, purpose="rescore", state=st) for z in sizes for st in ("find", "use")),
         "split on every scored cell": split and all("n_tok_action" in r for r in split),
         "null controls": len(d.get("null_controls", {})) == len(d["task_ids"]),
+        "analysis cell outputs": all(os.path.exists(f"/kaggle/working/{f}") for f in outs),
     }
     ok = all(checks.values())
     msg = ", ".join(f"{k}: {'ok' if v else 'FAILED'}" for k, v in checks.items()) + f" | d1 ok {len(split)}, d2 ok {len(by(d['d2']))}"

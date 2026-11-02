@@ -311,3 +311,12 @@ additions, labelled as such in every table, and do not change H1–H6.
     plus at most the opening brace (`tests/test_template_scoring.py`). To get the split where C03 already scored the
     cells, S-use L0, L2, L5 and W are re-scored for 31b, e4b and 12b (rows marked `purpose: rescore`). Their totals
     also measure run-to-run reproducibility against C03.
+14. **Scope of `notebooks/C04_probe_followup__L4x4.ipynb` revised (coordinator, 2026-11-02, after the C03 and C05 results).**
+    - e2b is not run, so the frozen design stays incomplete for e2b. H2 and H4 trends use 3 sizes.
+    - The action/arguments split (item 13) is added at S-find: L0, L1, L2, G-json and X-graph are re-scored for 31b, e4b
+      and 12b (exploratory). L2 is included so the function hint's gain can be placed in the call header or the
+      arguments.
+    - No empty-graph control.
+    - Final tables and figures come from `pilot_c/analyze_c04.py` (the notebook's last cell). It recomputes the
+      pre-registered tables with C04's design cells merged in (`C03C04_*`) and writes the exploratory additions
+      (`C04_*`).

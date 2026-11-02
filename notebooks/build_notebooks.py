@@ -96,13 +96,14 @@ SPECS = {
     "C04": {"file": "C04_probe_followup__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
             "inputs": [COMPETITION, WHEELHOUSE, GEMMA], "upstream": "C03",
             "upstream_file": "C03_probe.json + private/probe_records.jsonl + private/probe_contexts.json",
-            "time": "≈ 2.0 L4x4 h (range 1.7–2.4; hard stop 2.5 h)",
-            "output": "C04_probe_followup.json", "extra_output": "C04_probe_followup_e2b.json, C04_probe_followup_12b.json, C04_probe_followup_31b.json, C04_probe_followup_e4b.json (one per size; each is complete on its own)",
-            "what": "Follow-up to the probe, on the same 30 tasks, contexts and words as C03 (read from its output). Runs the "
-                    "pre-registered cells C03 did not reach (e2b at both depths, 12b depth 2 and 3 tasks of 12b depth 1) and, "
-                    "as exploratory additions (docs/PLAN.md §11 items 10–13): X-graph at depth 2, the unrelated-file graph "
-                    "control G-null, and a split of each target's log-likelihood into the action part (call this tool now) "
-                    "and the arguments, re-scoring S-use L0/L2/L5/W for 31b, e4b, 12b."},
+            "time": "≈ 1.5 L4x4 h (range 1.3–1.8; hard stop 2.0 h)",
+            "output": "C04_probe_followup.json", "extra_output": "C04_probe_followup_12b.json, C04_probe_followup_31b.json, C04_probe_followup_e4b.json (one per size), and the analysis files written by the last cell: C04_analysis.json, C04_tables.md, C03C04_analysis.json, C03C04_tables.md, C04_fig4/5 and C03C04_fig1-3 images",
+            "what": "Follow-up to the probe, on the same 30 tasks, contexts and words as C03 (read from its output), for 12b, 31b "
+                    "and e4b (no e2b). Runs the pre-registered cells C03 did not reach (12b depth 2 and 3 tasks of 12b depth 1) "
+                    "and, as exploratory additions (docs/PLAN.md §11 items 10–14): X-graph at depth 2, the unrelated-file "
+                    "graph control G-null, and a split of each target's log-likelihood into the action part (call this tool "
+                    "now) and the arguments, re-scoring S-find L0/L1/L2/G-json/X-graph and S-use L0/L2/L5/W. The last cell "
+                    "writes the final tables and figures."},
     "C05": {"file": "C05_validation_12b__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
             "inputs": [COMPETITION, WHEELHOUSE, "model `google/gemma-4` → Other → `gemma-4-12b-it-qat-w4a16-ct` (version 2; the other three that come with the starter copy are unused)"],
             "upstream": "C03", "upstream_file": "C03_probe.json (the 30 probe tasks, in order)",
@@ -535,17 +536,27 @@ print('C03 output OK:', len(_c03['task_ids']), 'tasks; plan', _c03['plan_commit'
 FOLLOWUP_CONFIG = """
 # ---- configuration (only edit here) — docs/PLAN.md (frozen at 168d115) + §11 items 10-13 (exploratory additions)
 PLAN_COMMIT = '168d11573bf20003435e4b4a1874cfaebddd0ce1'
-# Order: e2b first (the size C03 never reached), then 12b (depth 2), then 31b and e4b (controls and re-scores only).
-# A time guard skips the tail. Each size's results are saved on their own (C04_probe_followup_<size>.json).
-SIZES = ['gemma-4-e2b-it-qat-w4a16-ct', 'gemma-4-12b-it-qat-w4a16-ct', 'gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct']
-RESCORE_SIZES = ('31b', 'e4b', '12b')            # S-use L0/L2/L5/W re-scored with the action/arguments split
+# Order: 12b (depth 2 and the 3 tasks C03 cut), then 31b and e4b (controls and re-scores only). e2b is not run
+# (coordinator, 2026-11-02). A time guard skips the tail. Each size's results are saved on their own.
+SIZES = ['gemma-4-12b-it-qat-w4a16-ct', 'gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct']
+RESCORE_SIZES = ('31b', 'e4b', '12b')            # re-scored with the action/arguments split:
+RESCORE_FIND = ('L0', 'L1', 'L2', 'G-json', 'X-graph')   #   S-find (PLAN §11 item 14)
+RESCORE_USE = ('L0', 'L2', 'L5', 'W')                    #   S-use (PLAN §11 item 13)
 GRAPH_CONTROLS = (('find', 'G-null'), ('use', 'G-null'))          # depth 1, every size
 D2_EXTRA = (('find', 'X-graph'), ('find', 'G-null'))              # depth 2 (n=1), every size
 PROBE_GPU_UTIL = 0.75                            # same probe-server settings as C03 (PLAN §11, deviation 7)
 PROBE_VLLM_ARGS = ('--max-num-batched-tokens', '1024')
 BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)
-MAX_SESSION_HOURS = 2.5
+MAX_SESSION_HOURS = 2.0
 WORKERS = 16
+"""
+
+FOLLOWUP_ANALYSIS = """
+# ---- standalone analysis (pilot_c/analyze_c04.py; tested on synthetic data): the pre-registered tables and figures with
+# C04's design cells merged in (C03C04_*), and the exploratory additions (C04_*). Numbers only.
+from pilot_c import analyze_c04 as a4
+A4 = a4.main(str(kr.find_input_json('C03_probe.json')), '/kaggle/working/C04_probe_followup.json', '/kaggle/working')
+print('figures:', A4['figures'])
 """
 
 FOLLOWUP_RUN = """
@@ -571,7 +582,8 @@ deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
 MAX_FREEZES, selfcheck_fail_streak = 2, 0
 for model in SIZES:
     size = kr.SHORT[model]
-    d1_cells, d2_cells, counts = pr.followup_cells(size, recs, c03, RESCORE_SIZES, GRAPH_CONTROLS, D2_EXTRA)
+    d1_cells, d2_cells, counts = pr.followup_cells(size, recs, c03, RESCORE_SIZES, GRAPH_CONTROLS, D2_EXTRA,
+                                                   RESCORE_USE, RESCORE_FIND)
     print(f'[{size}] cells planned:', counts)
     if summary['stopped'] or time.time() > deadline - 600:
         summary['sizes'].append({'model': model, 'size': size, 'planned': counts, 'skipped': summary['stopped'] or 'session time guard'}); continue
@@ -790,12 +802,15 @@ def validation_fix_nb() -> tuple[dict, str]:
 
 def followup_nb() -> tuple[dict, str]:
     cells = [first_cell("C04")]
-    cells += code_cells()
+    cells += code_cells(extra=("common/stats.py", "pilot_c/analyze_c03.py", "pilot_c/analyze_c04.py"))
     cells.append(code(PRECHECK_03.replace("{extra}", "kr.find_input_json('probe_records.jsonl'); kr.find_input_json('probe_contexts.json')")))
     cells.append(code(SETUP.format(gpu="True", only="None")))
     cells.append(code(FOLLOWUP_CONFIG))
     cells.append(code(FOLLOWUP_RUN))
-    cells.append(md(RESULTS_NOTE.format(out=SPECS["C04"]["output"])))
+    cells.append(code(FOLLOWUP_ANALYSIS))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C04"]["output"]).replace(
+        "and commit it", "plus `C04_analysis.json`, `C04_tables.md`, `C03C04_analysis.json`, `C03C04_tables.md` and the "
+        "`C04_fig*` / `C03C04_fig*` images, and commit them")))
     return _nb(cells), SPECS["C04"]["file"]
 
 

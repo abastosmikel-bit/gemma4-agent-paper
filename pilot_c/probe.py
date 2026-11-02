@@ -32,6 +32,7 @@ GRAPH_CONDS = {"G-json": "json", "G-edges": "edges", "G-adj": "adj", "X-graph": 
 FOLLOWUP_D1 = (("find", "G-null"), ("use", "G-null"))
 FOLLOWUP_D2 = (("find", "X-graph"), ("find", "G-null"))
 RESCORE_USE = ("L0", "L2", "L5", "W")
+RESCORE_FIND = ("L0", "L1", "L2", "G-json", "X-graph")   # PLAN §11 item 14 (2026-11-02)
 WORDS_CONDS = {"L4", "L5", "W", "X-words"}
 
 

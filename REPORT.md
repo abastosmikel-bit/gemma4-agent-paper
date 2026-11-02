@@ -82,6 +82,29 @@ The improved prompt I worked from is `docs/PROMPT.md`.
 
    D0 now installs pytest and pytest-timeout if missing.
 
+**Open tasks (round 2)** — [you] = your decision or action, [C] = pilot C, [D] = pilot D:
+- [ ] [you] Run `notebooks/D0_heldout_export__CPU.ipynb` on Kaggle. CPU only, Internet ON, starter's pinned environment.
+  An optional Kaggle Secret `GITHUB_TOKEN` avoids waiting for the API's hourly reset. ≈ 2–4 h. Bring back
+  `D0_summary.json` → `results/`.
+  - Rules check: a non-submission notebook with Internet ON and competition data attached.
+- [ ] [C] Price D1/D2 from `docs/D_SPECS.md` (`paper/main`, bd2ead0). Main ≈ 2.8 L4x4 h at N = 24 (≈ 0.42 + 0.098 N),
+  fallback ≈ 1.2 h.
+- [ ] [you] GPU OK for D1/D2: main or fallback, after C's price. No GPU used so far.
+- [ ] [C] Build `D1_heldout_probe__L4x4.ipynb` (C03/C04 variant) and `D2_heldout_rollouts_12b__L4x4.ipynb` (C06
+  variant) on D0's output.
+  - Select the tasks with `pilot_d/select_d_tasks.py`. Local dry run: 22 tasks, 3 repos; D0's issue text should
+    raise it to 24.
+  - Freeze criteria R1–R7 in C's plan before the run.
+- [ ] [D] After D0: compare Kaggle validity with local (101 valid); register the Kaggle numbers in `RESULTS.md`; update
+  `docs/D_SPECS.md` if N changes.
+- [ ] [D] D2 caveat to carry into the analysis: `search_similar_code` runs on substitute embeddings (17% neighbour
+  agreement with the released ones). Report its call share.
+- [ ] [you, from round 1] Ask the host whether graphs regenerated from public upstream repos are fine with a citation and a
+  link to the Kaggle dataset.
+- [ ] [you, optional] EmbeddingGemma needs a licence click on your Kaggle account. Not needed now (bge-small is in use).
+- Not done, on purpose: no GPU; no tokens added; competition data stays out of git (leak scan: 0 dev ids, commits or
+  statements in tracked files); sympy stays in the export but out of D1/D2 (graph size).
+
 *Round 1 (2026-10-31) follows unchanged.*
 
 ## 1. Bottom line

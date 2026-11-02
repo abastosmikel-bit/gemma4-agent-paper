@@ -85,3 +85,54 @@ is rejected, pull and retry.** Mark anything not verified in the real runtime as
   - The edit tool is not at fault (1/33 is accepted on replay). Compaction summaries keep ~0% of the statement's 5-grams and drop tool outputs, so the model edits from memory. Re-reading the file before editing after a compaction is a candidate fix (untested).
   - Source: `results/C06_failed_edits.json`, `pilot_c/edit_failures.py` (pilot/c-bottleneck 8b675fb). (pilot C)
 - 2026-11-02 · **Test-verified probe edits (C03v; single run, first sampled action, 1–2 samples per cell).** 12b and 31b mostly don't edit in their first action (gold-file edits at L2 2% / 2%, with the exact diff 30% / 46%), but 69–80% of their edits with the diff pass the tests; e4b edits 74–88% of the time and 28–65% of its edits pass. Exact-match grading misses most correct edits (e4b below L5: 54 of 65 passing edits are not exact), and "exact" can still fail when the gold patch changes lines outside the scored function (11/30 tasks). Grade by tests and report edit rate and pass-given-edit separately. Source: `results/C03v_checks.md` (pilot/c-bottleneck a602a65). (pilot C)
+- 2026-11-02 · **No embeddings file ⇒ no "Code Intelligence Tools" prompt section.** `build_agent_prompt` (swegemma 0.2.11 `harness/agent_runner.py`) adds that section only if both `graphs/<repo>_<base>.json` and `embeddings/<repo>_<base>.npz` exist and are > 100 bytes, where `<repo>` is the part of `owner/name` after the slash, **case as written**. So any custom or held-out task set shipped with graphs but no `.npz` gives the agent a different prompt from the dev tasks. Checked with the harness's own prompt builder: held-out export without `.npz` 0/22 tasks show the section; one dev task shows it with its released `.npz` and not without it (positive control). Source: `pilot_d/check_prompt_parity.py` (pilot/d-heldout). (pilot D)
+- 2026-11-02 · **The released embeddings cannot be reproduced; any substitute is a different `search_similar_code`.**
+  - The vectors come from a Google-internal model (`embedding_utils.DEFAULT_FUNC_EMBEDDINGS_SSTABLE` is a `/cns/...` path).
+  - They are 256-d and not normalized (norms 3.7–8.7), with one near-constant dimension (index 199 ≈ 3.37 in every repo
+    checked). The harness ranks by raw cosine (checked: its top-10 equals raw-cosine top-10), so the top hits all score
+    ≈ 0.999.
+  - Open substitutes agree on only 17–18% of top-10 neighbours with the released vectors on 4 dev graphs (random 0.9%):
+    gte-modernbert-base 0.183, bge-small 0.174 (Spearman 0.12). Pilot D ships bge-small (MIT, safetensors, no remote
+    code), which is 4× faster on CPU (22 vs 5 texts/s).
+  - A linear map into the released space *lowers* agreement to 7% (leave-one-repo-out), so none is used.
+  - Implication: prompts can be made identical, but `search_similar_code` answers differently. Report its call share in
+    any held-out rollout.
+  - Source: `pilot_d/embedding_parity.py`, `results/embedding_parity.json` (pilot/d-heldout). (pilot D)
+- 2026-11-02 · **A task is valid in the subprocess sandbox only if the package works without being installed**
+  (extends the src-layout entry):
+  - flat layout (the repo root's `conftest.py` puts `/workspace` first; `src/` never gets on the path);
+  - no entry-point lookups: Python-Markdown loads extensions by entry-point name, which needs an installed copy, so
+    2/9 were valid;
+  - every test-only import declared and present (sympy's `conftest.py` requires `hypothesis`; xarray's tests skip whole
+    modules without optional backends, so 1/12 were valid).
+
+  Held-out yields, local subprocess sandbox: sqlglot 46/50, networkx 16/21, pyparsing 8/9. Source:
+  `results/heldout_pool_local.json` (pilot/d-heldout). (pilot D)
+- 2026-11-02 · **Released graph generator, exact rules** (relevant to pilot B and claim 3).
+  - Node ids: the generator keeps *one* "current class" variable and resets it to `None` after any class body. So
+    closures in methods become `<module>.<Class>.<name>`, and methods after a nested class become `<module>.<name>`.
+  - Module names are package-relative inside packages; `src/` and non-package dirs drop out.
+  - Every edge is stored in both directions: class↔own methods, plus calls resolved via module, import and local names.
+    There are no `self.`, typed or `super` calls.
+  - Re-implemented on codegraph-loc (`common/graph_build.py`): 100% node-id recall and precision on 7/7 released dev
+    graphs (all 4 repos), node text 96–99% exact, undirected edge recall 84–96%.
+  - Source: `results/graph_fidelity_dev.json` (pilot/d-heldout). (pilot D)
+- 2026-11-02 · **Build task patches with git's Python diff driver: hunk headers decide the required tests.**
+  - Dev test patches have Python-driver hunk headers: 527 of 720 name a `def …`, 36 a `class …`, 157 are empty.
+  - When a test patch adds no new `def test_*`, the scorer's required tests come from those headers
+    (`_extract_test_functions_from_patch`). With git's default driver the header is usually `class Test…:`, so no test is
+    required and verification checks only the exit code.
+  - Fix: `git -c core.attributesFile=<file with "*.py diff=python"> diff …`. The hunk bodies are unchanged.
+  - In pilot D's first export, 29 of 48 probe-ineligible tasks failed only on "≥ 1 required test name" for this reason.
+  - Source: `common/mining.py:file_diff`, `docs/FORMAT.md` §1 (pilot/d-heldout). (pilot D)
+- 2026-11-02 · **The harness's graph tools stall on graphs above ~25k nodes.**
+  - `embedding_utils._CACHE` is a `cachetools.LRUCache(maxsize=50000)`. Loading an `.npz` puts every node id in it,
+    then every node text.
+  - Above ~25k nodes the ids are evicted, so each per-node `embed(id)` in `get_graph` falls through to a linear scan
+    over all keys. Loading becomes O(N²).
+  - Measured with swegemma 0.2.11 locally: `get_graph` 0.2 s (2.0k nodes), 0.9 s (5.9k), 1.2 s (8.1k), and > 300 s,
+    unfinished, for sympy (39.5k).
+  - Dev graphs (≤ 4.3k nodes) are unaffected. Any held-out or custom task set with large repos must cap graph size, or
+    every graph tool call stalls.
+  - Source: swegemma `graph/embedding_utils.py` lines 26, 321, 369, 399; py-spy stack of the stalled process;
+    `pilot_d/check_prompt_parity.py` guard (pilot/d-heldout). (pilot D)

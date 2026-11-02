@@ -320,3 +320,10 @@ additions, labelled as such in every table, and do not change H1–H6.
     - Final tables and figures come from `pilot_c/analyze_c04.py` (the notebook's last cell). It recomputes the
       pre-registered tables with C04's design cells merged in (`C03C04_*`) and writes the exploratory additions
       (`C04_*`).
+15. **Three checks on C03v (exploratory, coordinator, 2026-11-02, after the C03v results).** `pilot_c/c03v_checks.py`
+    → `results/C03v_checks.{json,md}`:
+    - K1: for each size at L0, L2, W, L5, the share of S-use samples that edit the gold file and the share of those edits
+      that pass the tests;
+    - K2: W vs L2 vs L0, paired on the 27 tasks that have all three (Wilcoxon on per-task pass share with Holm over the
+      three pairs; McNemar and Cochran's Q on "≥ 1 sample passes");
+    - K3: passing samples that are not an exact match, per size and condition.

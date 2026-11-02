@@ -1,0 +1,477 @@
+{
+ "samples_known": 1746,
+ "verified_rows": 435,
+ "verified_without_sample_row": 0,
+ "V1": {
+  "e4b/G-json": {
+   "samples": 60,
+   "solves": 13,
+   "solves_rate": 0.2167,
+   "solves_rate_ci": [
+    0.1,
+    0.3333
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 10,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 13
+  },
+  "e4b/L0": {
+   "samples": 60,
+   "solves": 11,
+   "solves_rate": 0.1833,
+   "solves_rate_ci": [
+    0.0667,
+    0.3167
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 7,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 10
+  },
+  "e4b/L2": {
+   "samples": 60,
+   "solves": 15,
+   "solves_rate": 0.25,
+   "solves_rate_ci": [
+    0.1167,
+    0.4
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 9,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 13
+  },
+  "e4b/L3": {
+   "samples": 60,
+   "solves": 17,
+   "solves_rate": 0.2833,
+   "solves_rate_ci": [
+    0.1667,
+    0.4167
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 13,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 15
+  },
+  "e4b/L4": {
+   "samples": 54,
+   "solves": 22,
+   "solves_rate": 0.4074,
+   "solves_rate_ci": [
+    0.2407,
+    0.5926
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 12,
+   "exact": 6,
+   "exact_not_solves": 0,
+   "solves_not_exact": 16
+  },
+  "e4b/L5": {
+   "samples": 54,
+   "solves": 30,
+   "solves_rate": 0.5556,
+   "solves_rate_ci": [
+    0.3704,
+    0.7407
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 16,
+   "exact": 25,
+   "exact_not_solves": 3,
+   "solves_not_exact": 8
+  },
+  "e4b/T": {
+   "samples": 60,
+   "solves": 14,
+   "solves_rate": 0.2333,
+   "solves_rate_ci": [
+    0.1167,
+    0.3667
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 10,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 12
+  },
+  "e4b/W": {
+   "samples": 54,
+   "solves": 20,
+   "solves_rate": 0.3704,
+   "solves_rate_ci": [
+    0.2037,
+    0.5556
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 11,
+   "exact": 5,
+   "exact_not_solves": 0,
+   "solves_not_exact": 15
+  },
+  "e4b/X-func": {
+   "samples": 60,
+   "solves": 9,
+   "solves_rate": 0.15,
+   "solves_rate_ci": [
+    0.05,
+    0.2667
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 6,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 7
+  },
+  "e4b/X-test": {
+   "samples": 60,
+   "solves": 15,
+   "solves_rate": 0.25,
+   "solves_rate_ci": [
+    0.1167,
+    0.4
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 9,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 15
+  },
+  "12b/G-json": {
+   "samples": 60,
+   "solves": 2,
+   "solves_rate": 0.0333,
+   "solves_rate_ci": [
+    0.0,
+    0.1
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 2
+  },
+  "12b/L0": {
+   "samples": 60,
+   "solves": 2,
+   "solves_rate": 0.0333,
+   "solves_rate_ci": [
+    0.0,
+    0.1
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 2
+  },
+  "12b/L2": {
+   "samples": 60,
+   "solves": 1,
+   "solves_rate": 0.0167,
+   "solves_rate_ci": [
+    0.0,
+    0.05
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "12b/L3": {
+   "samples": 60,
+   "solves": 2,
+   "solves_rate": 0.0333,
+   "solves_rate_ci": [
+    0.0,
+    0.0833
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 2,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "12b/L4": {
+   "samples": 54,
+   "solves": 2,
+   "solves_rate": 0.037,
+   "solves_rate_ci": [
+    0.0,
+    0.0926
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 2,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "12b/L5": {
+   "samples": 54,
+   "solves": 11,
+   "solves_rate": 0.2037,
+   "solves_rate_ci": [
+    0.0741,
+    0.3519
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 7,
+   "exact": 10,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "12b/T": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "12b/W": {
+   "samples": 54,
+   "solves": 3,
+   "solves_rate": 0.0556,
+   "solves_rate_ci": [
+    0.0,
+    0.1296
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 3,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "12b/X-func": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "12b/X-test": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "31b/G-json": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "31b/L0": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "31b/L2": {
+   "samples": 60,
+   "solves": 1,
+   "solves_rate": 0.0167,
+   "solves_rate_ci": [
+    0.0,
+    0.05
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "31b/L3": {
+   "samples": 60,
+   "solves": 2,
+   "solves_rate": 0.0333,
+   "solves_rate_ci": [
+    0.0,
+    0.1
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  },
+  "31b/L4": {
+   "samples": 54,
+   "solves": 3,
+   "solves_rate": 0.0556,
+   "solves_rate_ci": [
+    0.0,
+    0.1481
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 2,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 2
+  },
+  "31b/L5": {
+   "samples": 54,
+   "solves": 20,
+   "solves_rate": 0.3704,
+   "solves_rate_ci": [
+    0.2037,
+    0.537
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 12,
+   "exact": 17,
+   "exact_not_solves": 0,
+   "solves_not_exact": 3
+  },
+  "31b/T": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "31b/W": {
+   "samples": 54,
+   "solves": 8,
+   "solves_rate": 0.1481,
+   "solves_rate_ci": [
+    0.037,
+    0.2778
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 5,
+   "exact": 4,
+   "exact_not_solves": 0,
+   "solves_not_exact": 4
+  },
+  "31b/X-func": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0
+  },
+  "31b/X-test": {
+   "samples": 60,
+   "solves": 1,
+   "solves_rate": 0.0167,
+   "solves_rate_ci": [
+    0.0,
+    0.05
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1
+  }
+ },
+ "V2": {
+  "e4b": {
+   "L0": 7,
+   "none (a ladder cell missing)": 1,
+   "L3": 5,
+   ">L5": 8,
+   "L5": 5,
+   "L4": 2,
+   "L2": 2
+  },
+  "12b": {
+   ">L5": 19,
+   "none (a ladder cell missing)": 3,
+   "L3": 2,
+   "L5": 4,
+   "L0": 1,
+   "L4": 1
+  },
+  "31b": {
+   "L5": 9,
+   ">L5": 15,
+   "none (a ladder cell missing)": 3,
+   "L4": 1,
+   "L2": 1,
+   "L3": 1
+  }
+ },
+ "V3": {
+  "e4b": {
+   "tasks": 30,
+   "L2_any_solves": 9,
+   "L5_any_solves": 16,
+   "label": "exploratory variant of H5 (e4b)"
+  },
+  "12b": {
+   "tasks": 30,
+   "L2_any_solves": 1,
+   "L5_any_solves": 7,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  },
+  "31b": {
+   "tasks": 30,
+   "L2_any_solves": 1,
+   "L5_any_solves": 12,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  }
+ },
+ "figures": [
+  "C03v_fig_solves.png"
+ ]
+}

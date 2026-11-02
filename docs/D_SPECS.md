@@ -13,7 +13,7 @@ of 2026-10-31 says claims tuned on the dev tasks must be re-checked on tasks non
 
 | notebook | accelerator | re-checks (`docs/CLAIMS.md`) | built by |
 |---|---|---|---|
-| `notebooks/D0_heldout_export__CPU.ipynb` | CPU, Internet ON | **claim 5** (validity audit) on held-out tasks; produces the input of D1/D2 | pilot D (`pilot/d-heldout`), ready |
+| `notebooks/D0a_heldout_fetch__CPU.ipynb` then `notebooks/D0b_heldout_export__CPU.ipynb` | CPU; D0a Internet ON without competition data, D0b Internet OFF with it | **claim 5** (validity audit) on held-out tasks; D0b's output is the input of D1/D2 | pilot D (`pilot/d-heldout`), ready |
 | `notebooks/D1_heldout_probe__L4x4.ipynb` | L4x4 | **claims 1 and 3**, depth 1 and depth 2 | pilot C (a C03/C04 variant reading D0's output) |
 | `notebooks/D2_heldout_rollouts_12b__L4x4.ipynb` | L4x4 | **claims 2 and 4** (compaction erases the task; the 8192 fix prevents crashes), plus the held-out solve rate of the paper's agent configuration | pilot C (a C06 variant) |
 
@@ -21,18 +21,27 @@ Why D2 is O0 only: C06 showed that, without crashes, the hint effect is +4 net o
 O0-vs-O-all comparison at N ≈ 24 cannot test it, so O-all is an add-on, not part of the main version. Claims 2 and 4 are
 measured in every run, whatever the condition.
 
-## D0: the held-out export (CPU, no GPU)
+## D0a + D0b: the held-out export (CPU, no GPU)
+- **Why two notebooks:** Kaggle refuses Internet for a notebook with this competition attached, even on CPU.
+  - D0a (Internet ON, nothing attached) downloads everything external into its output: pool, snapshots, issue text,
+    wheels for what the image lacks, codegraph-loc, and the bge-small model.
+  - D0b (Internet OFF, competition + wheelhouse + D0a's output attached) installs with `--no-index` only and does the
+    rest.
+  - **The output layout is unchanged:** D1/D2 attach D0b's output and read `heldout_export/` (Level A) and
+    `D0_summary.json`.
 - **What it does.**
   - Rebuilds pilot D's pool from public GitHub, using the commits in `pilot_d/manifest.json`.
   - Validates every task in the real Kaggle image with the harness's own `verify_task`: gold passes, empty patch fails.
   - Fetches issue text from the GitHub API, computes F2P/P2P, gold locations and verified reproduction tests.
   - Writes released-rule graphs and substitute embeddings.
   - Output: `docs/PROBE_INPUT.md` Level A + `heldout_meta.jsonl` + `EXPORT.json`. Summary: `D0_summary.json`.
-- **Runs** in the starter's pinned Python 3.12 environment. Inputs: competition data and `metric/gemma-4-developer-agent-wheelhouse`.
-  An optional Kaggle Secret `GITHUB_TOKEN` avoids waiting for the API's hourly reset. Expected 2–4 h of CPU.
-- **Local papermill dry run** (fake `/kaggle`, 2 repos × 2 tasks, GitHub API stubbed): all 8 content checks pass.
-  Checks: built and valid > 0, exported = valid, prompt section on every task and absent without embeddings, graph
-  tools answer, no tool errors.
+- **Runs:** both in the starter's pinned Python 3.12 environment. D0a ≈ 1–3.5 h; an optional Kaggle Secret
+  `GITHUB_TOKEN` avoids waiting for the API's hourly reset. D0b ≈ 2–3 h.
+- **Local papermill dry runs** (fake `/kaggle`, 2 repos × 2 tasks, GitHub API stubbed in D0a):
+  - D0a passes 10/10 checks, including an offline install + embedding self-check.
+  - D0b passes 10/10 checks inside a network namespace with a socket/DNS guard, with **0 network attempts**; the guard's
+    positive control logs and blocks a lookup.
+  - Scripts: `tests/d0a_dryrun.sh`, `tests/d0b_dryrun.sh` (`pilot/d-heldout`).
 - **Local check of the format against C's own code, unmodified:** C's `pilot_c/build_gold.py`, `select_tasks.eligible` and
   `probe.build_probe_record` (`pilot/c-bottleneck` 71c6622) were run unmodified on the 101-task local export.
   - Eligibility: 61/101, and pilot D's own mirror of the rule agrees on 101/101.

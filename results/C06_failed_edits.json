@@ -1,0 +1,111 @@
+{
+ "runs": [
+  {
+   "task": "fastapi_14258",
+   "edits": 3,
+   "failed": 3,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 3,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 2,
+   "same_old_string_repeated": 0
+  },
+  {
+   "task": "fastapi_14463",
+   "edits": 6,
+   "failed": 2,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 2,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 2,
+   "same_old_string_repeated": 0
+  },
+  {
+   "task": "fastapi_14794",
+   "edits": 15,
+   "failed": 15,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 15,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 15,
+   "same_old_string_repeated": 11
+  },
+  {
+   "task": "fastapi_5624",
+   "edits": 3,
+   "failed": 1,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 1,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 1,
+   "same_old_string_repeated": 0
+  },
+  {
+   "task": "rich_2725",
+   "edits": 6,
+   "failed": 1,
+   "tool_would_accept_now": 1,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 0,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 1,
+   "after_first_compaction": 1,
+   "same_old_string_repeated": 0
+  },
+  {
+   "task": "rich_3718",
+   "edits": 7,
+   "failed": 3,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 3,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 2,
+   "same_old_string_repeated": 1
+  },
+  {
+   "task": "rich_3935",
+   "edits": 4,
+   "failed": 2,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 2,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 2,
+   "same_old_string_repeated": 0
+  },
+  {
+   "task": "rich_4079",
+   "edits": 8,
+   "failed": 6,
+   "tool_would_accept_now": 0,
+   "matches_pre_edit_file_only": 0,
+   "never_matched": 6,
+   "path_not_found": 0,
+   "seen_verbatim_in_earlier_read": 0,
+   "after_first_compaction": 6,
+   "same_old_string_repeated": 3
+  }
+ ],
+ "total": {
+  "edits": 52,
+  "failed": 33,
+  "tool_would_accept_now": 1,
+  "matches_pre_edit_file_only": 0,
+  "never_matched": 32,
+  "path_not_found": 0,
+  "seen_verbatim_in_earlier_read": 1,
+  "after_first_compaction": 31,
+  "same_old_string_repeated": 15
+ }
+}

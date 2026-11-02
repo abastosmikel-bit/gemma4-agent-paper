@@ -27,6 +27,17 @@ unknown keys**. Extra annotation fields can therefore share the file without bre
 lines and no `/dev/null`: new files also use `--- a/X` with `@@ -0,0 …`. There is no trailing newline. Patches never
 touch test files, and test patches never touch non-test files. `common/mining.to_dev_style` reproduces this style.
 
+**Hunk headers come from git's Python diff driver, and they decide the required tests.**
+- In dev test patches, 527 of 720 hunk headers name a `def …` (e.g. `@@ -547,10 +547,7 @@ def test_sqlite(self):`), 36 a
+  `class …` and 157 are empty. That is git's built-in `diff=python` driver. Git's default driver would name the
+  enclosing unindented line, usually `class Test…:`.
+- This is not cosmetic. When a test patch adds no new `def test_*` (common: new assertions inside an existing test),
+  the scorer takes the required tests from these headers (`verification._extract_test_functions_from_patch`). With
+  default headers there are none, so verification falls back to "exit code 0" only.
+- Pilot D's first exports used default headers: 29 of 48 probe-ineligible tasks had no required test name. Fixed in
+  `common/mining.file_diff`; re-mined patches are identical apart from the header text, and their headers are now
+  175 `def`, 10 `class`, 11 empty, 4 other.
+
 ## 2. Snapshots: `snapshots/<instance_id>.tgz`
 - A gzip tar rooted at `./`, containing a git repo built by `git fast-export <base>` piped into `git fast-import`. There is
   no future history, but past depth varies (dev examples: 4 commits and 6,205 commits).
@@ -66,18 +77,21 @@ section from the agent's prompt. The file stem uses the part of `owner/name` aft
   score ≈ 0.999.
 
 **Held-out substitute (pilot D):**
-- `Alibaba-NLP/gte-modernbert-base` on "node id + node text": Apache-2.0, safetensors only, no remote code, normalized
-  768-d (`common/embed_nodes.py`).
-- Chosen by top-10-neighbour agreement with the released vectors on 4 dev graphs (`results/embedding_parity.json`):
+- `BAAI/bge-small-en-v1.5` on "node id + node text": MIT, safetensors only, no remote code, normalized 384-d
+  (`common/embed_nodes.py`; vectors cached across commits of a repo).
+- Candidates scored by top-10-neighbour agreement with the released vectors on 4 dev graphs
+  (`results/embedding_parity.json`):
 
   | candidate | agreement, raw | after linear map |
   |---|---|---|
-  | **gte on node id + text** | **0.183** | 0.074 |
-  | bge-small on node id + text | 0.174 | 0.062 |
-  | gte on node id only | 0.171 | 0.070 |
+  | gte-modernbert-base on node id + text | 0.183 | 0.074 |
+  | **bge-small on node id + text** | **0.174** | 0.062 |
+  | gte-modernbert-base on node id only | 0.171 | 0.070 |
 
   Random agreement is 0.009. The linear map into the released geometry was cross-validated leave-one-repo-out and made
   every candidate worse, so none is used.
+- bge over gte: the agreement is within noise (0.174 vs 0.183), but bge embeds 22 texts/s vs 5 for gte on 4 CPUs
+  (measured). That matters because D0 embeds ~80 graphs on Kaggle CPU.
 - So prompts are identical to dev's, but `search_similar_code` answers differently: count its calls in held-out runs.
 
 ## 4. Phase 2 verification (`swegemma.harness.verification.verify_task`)

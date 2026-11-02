@@ -73,6 +73,7 @@ def released_ids_for_file(path: Path, module: str, fixed: bool = False) -> dict[
     "methods labelled as module-level" bug). Async defs are skipped (released graphs have none).
     With fixed=True a proper class stack is used and async defs are kept.
     Returns {line of def/class keyword (and of each decorator): id}."""
+    sys.setrecursionlimit(max(sys.getrecursionlimit(), 50000))  # deeply nested generated code (see build)
     try:
         tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
     except SyntaxError:
@@ -108,6 +109,9 @@ def build(root: str, repo_short: str, base_commit: str, out_dir: str, fixed: boo
     """Node ids/texts from our AST rules; call resolution from codegraph-loc, re-keyed by (file, line)."""
     from cgl.graph import build_graph
 
+    # Deeply nested generated code (e.g. sympy) exceeds the default recursion limit in the AST visitors.
+    # Python >= 3.11 runs pure-Python recursion without consuming C stack, so a higher limit is safe.
+    sys.setrecursionlimit(max(sys.getrecursionlimit(), 50000))
     G0 = build_graph(root, module_scheme="official")  # package-relative names inside packages, else repo path
     rootp = Path(root)
     ids_cache: dict[str, dict[int, str]] = {}

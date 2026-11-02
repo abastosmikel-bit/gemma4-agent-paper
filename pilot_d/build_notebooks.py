@@ -29,7 +29,7 @@ Everything goes into the `docs/PROBE_INPUT.md` (paper/main) **Level A** layout.
 | | |
 |---|---|
 | Accelerator | **CPU** (no GPU quota) |
-| Internet | **ON**: GitHub clone + API, PyPI (test deps), Hugging Face (embedding model `Alibaba-NLP/gte-modernbert-base`, safetensors, no remote code) |
+| Internet | **ON**: GitHub clone + API, PyPI (test deps), Hugging Face (embedding model `BAAI/bge-small-en-v1.5`, safetensors, no remote code) |
 | Environment | the official starter's **pinned environment (Python 3.12)**: open the starter, Copy & Edit, File → Import Notebook with this file, keep "Pin to original environment" (LEARNINGS 2026-10-31). The first code cell stops on any other Python. |
 | Attach | competition `gemma-4-developer-agent` (dev graphs + embeddings fit the embedding map) · dataset `metric/gemma-4-developer-agent-wheelhouse` |
 | Optional | Kaggle Secret `GITHUB_TOKEN` (raises the GitHub API limit; without it the notebook waits for the hourly reset when needed) |
@@ -98,7 +98,7 @@ for env in sorted(glob.glob('pilot_d/env/*.txt')):
     for line in open(env):
         line = line.split('#')[0].strip()
         if not line: continue
-        dist = line.split('==')[0]; mod = {'python-dateutil': 'dateutil'}.get(dist, dist)
+        dist = line.split('==')[0]; mod = {'python-dateutil': 'dateutil', 'pytest-timeout': 'pytest_timeout'}.get(dist, dist)
         try: importlib.import_module(mod)
         except ImportError: subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', line], check=True)
         used[dist] = md.version(dist)

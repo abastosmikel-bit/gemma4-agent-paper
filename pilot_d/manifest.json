@@ -8,10 +8,10 @@
   "Python-Markdown/markdown": "extensions load by entry-point name, which needs an INSTALLED copy; the subprocess sandbox never installs the workspace (2/9 valid)"
  },
  "embeddings": {
-  "model": "gte",
+  "model": "bge",
   "input": "text",
   "map": false,
-  "why": "highest agreement with released top-10 neighbours on 4 dev graphs (pilot_d/embedding_parity.py); the linear map into the released geometry lowered agreement (cross-validated)"
+  "why": "top-10-neighbour agreement with the released embeddings on 4 dev graphs: bge 0.174, gte 0.183 (random 0.009); bge chosen for speed (22 vs 5 texts/s on 4 CPUs, measured), needed to embed ~80 graphs on Kaggle CPU; the linear map into the released geometry lowered agreement for every model (leave-one-repo-out), so none is used"
  },
  "repos": [
   {

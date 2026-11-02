@@ -67,10 +67,29 @@ def to_dev_style(diff: str) -> str:
     return "\n".join(out)
 
 
+_PY_ATTR = None
+
+
+def _python_diff_attributes() -> str:
+    """A gitattributes file enabling git's built-in Python diff driver, so hunk headers name the enclosing
+    `def`/`class` (e.g. '@@ ... @@ def test_sqlite(self):') as in the dev tasks (527 of 720 dev test-patch hunk
+    headers are `def ...`). This matters: when a test patch adds no `def test_*`, the scorer takes the required
+    tests from these headers (verification._extract_test_functions_from_patch)."""
+    global _PY_ATTR
+    if _PY_ATTR is None:
+        import tempfile
+        fd, _PY_ATTR = tempfile.mkstemp(prefix="pyattr_")
+        with open(fd, "w") as fh:
+            fh.write("*.py diff=python\n")
+    return _PY_ATTR
+
+
 def file_diff(repo: str, parent: str, commit: str, paths: list[str]) -> str:
     if not paths:
         return ""
-    return git(repo, "diff", "--no-color", "--no-renames", "-U3", parent, commit, "--", *paths)
+    return subprocess.run(["git", "-c", f"core.attributesFile={_python_diff_attributes()}", "-C", repo, "diff",
+                           "--no-color", "--no-renames", "-U3", parent, commit, "--", *paths],
+                          capture_output=True, text=True, check=True).stdout
 
 
 def mine(args) -> None:

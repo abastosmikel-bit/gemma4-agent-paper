@@ -1,0 +1,3 @@
+# What the harness itself needs in the host env to run verification (Dockerfile.sandbox pins pytest-timeout 2.1.0)
+pytest==9.1.1
+pytest-timeout==2.1.0

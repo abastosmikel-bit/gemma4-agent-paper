@@ -76,3 +76,11 @@ is rejected, pull and retry.** Mark anything not verified in the real runtime as
   - With the repo's `src/` first on the path, 6 of the 14 become valid; the other 8 also lack the httpbin fixture.
   - Agents scored on these repos are scored on a test run that cannot see their edit.
   - Source: `results/C00_audit_imports.json`, `results/C00_audit.md` (pilot/c-bottleneck 9a7d533). (pilot C, checking pilot D)
+- 2026-11-02 · **The output-limit fix works, and the starter's sub-agent is never compacted.**
+  - With `max_output_tokens: 8192`, 12b's context crashes fell from 14 to 0 (no hint) and from 9 to 2 (hints) on the same 30 tasks. The median run's largest prompt was ~17k tokens, already above the old 16,384 limit.
+  - ADK's `AgentTool` runs a sub-agent (the sample agent's `code_analyzer`) in a fresh `Runner` without the app's compaction config (`tools/agent_tool.py`), so the sub-agent's history grows until it hits the context limit. Both no-hint runs that called it hit a context error inside it; the error came back to the main agent as a tool result.
+  - Source: `results/C06_analysis.json` A1/A6, `results/C06_validation_fix_12b.json` (pilot/c-bottleneck 8b675fb). (pilot C)
+- 2026-11-02 · **After compaction the model quotes code that is not there.**
+  - In C06, failed edits rose from 6 to 33 in no-hint runs once runs stopped crashing. Replaying file states with the harness's own matcher: 32/33 failing `old_string`s never matched the file in any version, 31/33 came after the first compaction, none had appeared verbatim in an earlier read, and 15 repeated an `old_string` that had already failed.
+  - The edit tool is not at fault (1/33 is accepted on replay). Compaction summaries keep ~0% of the statement's 5-grams and drop tool outputs, so the model edits from memory. Re-reading the file before editing after a compaction is a candidate fix (untested).
+  - Source: `results/C06_failed_edits.json`, `pilot_c/edit_failures.py` (pilot/c-bottleneck 8b675fb). (pilot C)

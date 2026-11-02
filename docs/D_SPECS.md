@@ -30,6 +30,9 @@ measured in every run, whatever the condition.
   - Output: `docs/PROBE_INPUT.md` Level A + `heldout_meta.jsonl` + `EXPORT.json`. Summary: `D0_summary.json`.
 - **Runs** in the starter's pinned Python 3.12 environment. Inputs: competition data and `metric/gemma-4-developer-agent-wheelhouse`.
   An optional Kaggle Secret `GITHUB_TOKEN` avoids waiting for the API's hourly reset. Expected 2–4 h of CPU.
+- **Local papermill dry run** (fake `/kaggle`, 2 repos × 2 tasks, GitHub API stubbed): all 8 content checks pass.
+  Checks: built and valid > 0, exported = valid, prompt section on every task and absent without embeddings, graph
+  tools answer, no tool errors.
 - **Local check of the format against C's own code, unmodified:** C's `pilot_c/build_gold.py`, `select_tasks.eligible` and
   `probe.build_probe_record` (`pilot/c-bottleneck` 71c6622) were run unmodified on the 101-task local export.
   - Eligibility: 61/101, and pilot D's own mirror of the rule agrees on 101/101.
@@ -56,6 +59,8 @@ Pool = D0 tasks that pass all of:
 
 **Selection:** a seeded (20261102), repo-stratified random sample of **N = 24**, at most 12 per repo (half of N), from at
 least 3 repos. If the pool is smaller, take all of it and price per task (see the formula below).
+Script: `pilot_d/select_d_tasks.py` (`pilot/d-heldout`). Its local dry run selected 22 tasks from 3 repos, using git issue
+references in place of issue text.
 **Pool estimate (local, before the API links PR-only fixes to issues, which can only add tasks):**
   - 101 valid tasks from 5 repos: sqlglot 46, tomlkit 20, networkx 16, sympy 11, pyparsing 8.
   - 51 probe-ready by C's code: sqlglot 21, tomlkit 15, networkx 8, sympy 7.

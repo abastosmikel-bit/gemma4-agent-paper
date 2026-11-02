@@ -83,10 +83,13 @@ The improved prompt I worked from is `docs/PROMPT.md`.
    D0 now installs pytest and pytest-timeout if missing.
 
 **Open tasks (round 2)** — [you] = your decision or action, [C] = pilot C, [D] = pilot D:
-- [ ] [you] Run `notebooks/D0_heldout_export__CPU.ipynb` on Kaggle. CPU only, Internet ON, starter's pinned environment.
-  An optional Kaggle Secret `GITHUB_TOKEN` avoids waiting for the API's hourly reset. ≈ 2–4 h. Bring back
-  `D0_summary.json` → `results/`.
-  - Rules check: a non-submission notebook with Internet ON and competition data attached.
+- [x] [D] Split D0, which Kaggle refused because Internet is not allowed with the competition attached:
+  - `notebooks/D0a_heldout_fetch__CPU.ipynb`: Internet ON, nothing attached.
+  - `notebooks/D0b_heldout_export__CPU.ipynb`: Internet OFF; competition, wheelhouse and D0a's output attached.
+  - Local dry runs pass 10/10 each. D0b's ran in a network namespace with 0 network attempts.
+  - D0b's output layout is unchanged for D1/D2.
+- [ ] [you] Run D0a on Kaggle (≈ 1–3.5 h; a `GITHUB_TOKEN` secret makes the issue-text step take minutes, not hours).
+  Then run D0b with D0a's output attached (≈ 2–3 h). Bring back `D0a_summary.json` and `D0_summary.json`.
 - [ ] [C] Price D1/D2 from `docs/D_SPECS.md` (`paper/main`, bd2ead0). Main ≈ 2.8 L4x4 h at N = 24 (≈ 0.42 + 0.098 N),
   fallback ≈ 1.2 h.
 - [ ] [you] GPU OK for D1/D2: main or fallback, after C's price. No GPU used so far.

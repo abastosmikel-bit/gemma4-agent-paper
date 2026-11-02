@@ -132,6 +132,7 @@ SPECS = {
              "also_attach": "C04",
              "time": "≈ 2–4 h CPU (each distinct sampled edit is verified once); 0 GPU h",
              "output": "C03v_test_verify.json",
+             "extra_output": "C03v_analysis.json, C03v_tables.md, C03v_fig_solves.png (written by the last cell)",
              "what": "Applies each edit sampled by C03 alone to the base snapshot and runs the required tests with the "
                      "scorer's verification path. If `notebooks/C04_probe_followup__L4x4.ipynb` has run, attach its output too: "
                      "its sampled edits are verified in the same pass."},
@@ -750,12 +751,26 @@ def probe_nb() -> tuple[dict, str]:
     return _nb(cells), SPECS["C03"]["file"]
 
 
+VERIFY_ANALYSIS = """
+# ---- standalone analysis (pilot_c/analyze_c03v.py; tested on synthetic data): pass rates per size and condition, the
+# information threshold with `exact or solves`, H5 with `solves`. Joins the verified edits to the probe's depth-2 rows
+# from C03 and, if attached, C04. Numbers only.
+from pilot_c import analyze_c03v as av
+_root = Path(os.environ.get('PILOT_INPUT_ROOT', '/kaggle/input'))
+_c04 = sorted(str(p) for p in _root.glob('**/C04_probe_followup.json'))[:1]
+AV = av.main('/kaggle/working/C03v_test_verify.json', str(kr.find_input_json('C03_probe.json')), *_c04, '/kaggle/working')
+print('figures:', AV['figures'])
+"""
+
+
 def probe_verify_nb() -> tuple[dict, str]:
     cells = [first_cell("C03v")]
-    cells += code_cells()
+    cells += code_cells(extra=("pilot_c/analyze_c03v.py",))
     cells.append(code(SETUP.format(gpu="False", only="kr.CPU_WHEELS")))
     cells.append(code(VERIFY_RUN))
-    cells.append(md(RESULTS_NOTE.format(out=SPECS["C03v"]["output"])))
+    cells.append(code(VERIFY_ANALYSIS))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C03v"]["output"]).replace(
+        "and commit it", "plus `C03v_analysis.json`, `C03v_tables.md` and `C03v_fig_solves.png`, and commit them")))
     return _nb(cells), SPECS["C03v"]["file"]
 
 

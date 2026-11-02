@@ -50,9 +50,12 @@ elif key in ("C03", "C03X"):
     msg = (f"captured {len(d['task_ids']) - len(d.get('capture_missing', []))}/{len(d['task_ids'])}, depth-1 ok {d1}, "
            f"depth-2 ok {d2}, failed sizes {failed}, per-size files with results {sorted(good)}, score modes {modes}")
 elif key == "C03v":
+    import os
     srcs = sorted({r.get("source") for r in d["rows"]})
-    ok = len(d["rows"]) > 0 and srcs == ["C03", "C04"]
-    msg = f"{len(d['rows'])} verified samples from {srcs}"
+    A = json.load(open("/kaggle/working/C03v_analysis.json")) if os.path.exists("/kaggle/working/C03v_analysis.json") else {}
+    ok = (len(d["rows"]) > 0 and srcs == ["C03", "C04"] and bool(A) and A["verified_without_sample_row"] == 0
+          and os.path.exists("/kaggle/working/C03v_tables.md") and A.get("figures") == ["C03v_fig_solves.png"])
+    msg = f"{len(d['rows'])} verified samples from {srcs}; analysis: {len(A.get('V1', {}))} size/condition cells, figures {A.get('figures')}"
 elif key == "C04":
     import os
     by = lambda rows, **kw: [r for r in rows if r.get("ok") and all(r.get(k) == v for k, v in kw.items())]

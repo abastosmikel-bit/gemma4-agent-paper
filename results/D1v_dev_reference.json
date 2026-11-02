@@ -1,0 +1,181 @@
+{
+ "samples_known": 522,
+ "verified_rows": 435,
+ "verified_without_sample_row": 0,
+ "V": {
+  "e4b/L0": {
+   "samples": 60,
+   "solves": 11,
+   "solves_rate": 0.1833,
+   "solves_rate_ci": [
+    0.0667,
+    0.3167
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 7,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 10,
+   "edit_rate": 0.5833,
+   "edits": 35,
+   "solves_given_edit": 0.3143
+  },
+  "e4b/L2": {
+   "samples": 60,
+   "solves": 15,
+   "solves_rate": 0.25,
+   "solves_rate_ci": [
+    0.1167,
+    0.4
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 9,
+   "exact": 2,
+   "exact_not_solves": 0,
+   "solves_not_exact": 13,
+   "edit_rate": 0.8833,
+   "edits": 53,
+   "solves_given_edit": 0.283
+  },
+  "e4b/L5": {
+   "samples": 54,
+   "solves": 30,
+   "solves_rate": 0.5556,
+   "solves_rate_ci": [
+    0.3704,
+    0.7407
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 16,
+   "exact": 25,
+   "exact_not_solves": 3,
+   "solves_not_exact": 8,
+   "edit_rate": 0.8519,
+   "edits": 46,
+   "solves_given_edit": 0.6522
+  },
+  "12b/L0": {
+   "samples": 60,
+   "solves": 2,
+   "solves_rate": 0.0333,
+   "solves_rate_ci": [
+    0.0,
+    0.1
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 2,
+   "edit_rate": 0.0333,
+   "edits": 2,
+   "solves_given_edit": 1.0
+  },
+  "12b/L2": {
+   "samples": 60,
+   "solves": 1,
+   "solves_rate": 0.0167,
+   "solves_rate_ci": [
+    0.0,
+    0.05
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1,
+   "edit_rate": 0.0167,
+   "edits": 1,
+   "solves_given_edit": 1.0
+  },
+  "12b/L5": {
+   "samples": 54,
+   "solves": 11,
+   "solves_rate": 0.2037,
+   "solves_rate_ci": [
+    0.0741,
+    0.3519
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 7,
+   "exact": 10,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1,
+   "edit_rate": 0.2963,
+   "edits": 16,
+   "solves_given_edit": 0.6875
+  },
+  "31b/L0": {
+   "samples": 60,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0,
+   "edits": 0,
+   "solves_given_edit": null
+  },
+  "31b/L2": {
+   "samples": 60,
+   "solves": 1,
+   "solves_rate": 0.0167,
+   "solves_rate_ci": [
+    0.0,
+    0.05
+   ],
+   "tasks": 30,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1,
+   "edit_rate": 0.0167,
+   "edits": 1,
+   "solves_given_edit": 1.0
+  },
+  "31b/L5": {
+   "samples": 54,
+   "solves": 20,
+   "solves_rate": 0.3704,
+   "solves_rate_ci": [
+    0.2037,
+    0.537
+   ],
+   "tasks": 27,
+   "tasks_any_solves": 12,
+   "exact": 17,
+   "exact_not_solves": 0,
+   "solves_not_exact": 3,
+   "edit_rate": 0.463,
+   "edits": 25,
+   "solves_given_edit": 0.8
+  }
+ },
+ "H5_with_solves": {
+  "e4b": {
+   "tasks": 30,
+   "L2_any_solves": 9,
+   "L5_any_solves": 16,
+   "label": "exploratory variant of H5 (e4b)"
+  },
+  "12b": {
+   "tasks": 30,
+   "L2_any_solves": 1,
+   "L5_any_solves": 7,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  },
+  "31b": {
+   "tasks": 30,
+   "L2_any_solves": 1,
+   "L5_any_solves": 12,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  }
+ },
+ "source": "dev: results/C03v_test_verify.json joined to C03 + C04 depth-2 rows (L0, L2, L5)"
+}

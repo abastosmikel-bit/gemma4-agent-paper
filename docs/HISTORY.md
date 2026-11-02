@@ -172,7 +172,19 @@ their sources are in `docs/CLAIMS.md` and `RESULTS.md`; terms are in `docs/GLOSS
   - the threshold is real for e4b, but for the larger models it mostly measures willingness to edit right away;
   - grading by tests, not exact match, is necessary.
 
-### Next — D
-- Pilot D's held-out tasks are needed to re-check claims 1, 3 and 5 out of distribution.
+### 2026-11-02 — D1 and D2 built, frozen and dry-run (no GPU yet)
+- Pilot D exported its held-out tasks (`notebooks/D0a_heldout_fetch__CPU.ipynb`, then `notebooks/D0b_heldout_export__CPU.ipynb`
+  on `pilot/d-heldout`). Pilot C built the notebooks that re-check the claims on them, as variants of its own:
+  - `notebooks/D1_heldout_probe__L4x4.ipynb` (C03/C04): claims 1 and 3 on 24 held-out tasks, 3 sizes, depth 1 and 2;
+  - `notebooks/D2_heldout_rollouts_12b__L4x4.ipynb` (C06): claims 2 and 4 and the held-out solve rate, 12b, no hint;
+  - `notebooks/D1v_test_verify__CPU.ipynb` (C03v): do D1's sampled edits pass the tests (CPU).
+- Only tasks whose statement comes from an issue are used (a PR body often describes the fix); sympy is excluded.
+- The replication criteria and the analysis code were frozen at 682a34f before any held-out data existed. Each notebook ends
+  with a cell that writes the final tables and figures, tested on synthetic data.
+- Estimates (L4x4 h, from C03/C04/C06's measured rates): main version D1 ≈ 1.55 + D2 ≈ 1.25 = **≈ 2.8 h** (range 2.4–3.6);
+  fallback D1 depth 1 only **≈ 1.15 h** (range 1.0–1.5). Waiting for the coordinator's OK.
+
+### Next — D runs
+- Run D0b (pilot D), then D1 and D2 (after the coordinator's OK), then D1v on CPU.
 
 **GPU used by pilot C:** 0.84 + 0.29 + 2.92 + 2.02 + 2.71 + 1.41 ≈ **10.2 L4x4 h** (C00 and C03v ran on CPU).

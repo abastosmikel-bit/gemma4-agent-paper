@@ -1,0 +1,254 @@
+{
+ "what": "Choose and validate the substitute embeddings for held-out tasks (missing-embeddings confound).",
+ "repos": [
+  "httpx",
+  "requests",
+  "rich",
+  "fastapi"
+ ],
+ "nodes": [
+  740,
+  711,
+  2015,
+  4106
+ ],
+ "candidates": {
+  "gte/text": {
+   "raw": [
+    {
+     "overlap@10": 0.195,
+     "random@10": 0.0135,
+     "spearman": 0.1761,
+     "top1_sim_substitute": 0.9857,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.2367,
+     "random@10": 0.0141,
+     "spearman": 0.1317,
+     "top1_sim_substitute": 0.8606,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.1465,
+     "random@10": 0.005,
+     "spearman": 0.1323,
+     "top1_sim_substitute": 0.876,
+     "top1_sim_released": 0.9999
+    },
+    {
+     "overlap@10": 0.155,
+     "random@10": 0.0024,
+     "spearman": 0.0199,
+     "top1_sim_substitute": 0.9587,
+     "top1_sim_released": 1.0
+    }
+   ],
+   "mapped_lorocv": [
+    {
+     "overlap@10": 0.1055,
+     "random@10": 0.0135,
+     "spearman": 0.0348,
+     "top1_sim_substitute": 0.9999,
+     "top1_sim_released": 1.0,
+     "lambda": 10.0
+    },
+    {
+     "overlap@10": 0.0654,
+     "random@10": 0.0141,
+     "spearman": 0.0799,
+     "top1_sim_substitute": 0.9982,
+     "top1_sim_released": 1.0,
+     "lambda": 1.0
+    },
+    {
+     "overlap@10": 0.0383,
+     "random@10": 0.005,
+     "spearman": 0.0386,
+     "top1_sim_substitute": 0.9997,
+     "top1_sim_released": 0.9999,
+     "lambda": 10.0
+    },
+    {
+     "overlap@10": 0.0871,
+     "random@10": 0.0024,
+     "spearman": 0.0269,
+     "top1_sim_substitute": 0.9997,
+     "top1_sim_released": 1.0,
+     "lambda": 1.0
+    }
+   ],
+   "raw_mean": {
+    "overlap@10": 0.1833,
+    "random@10": 0.0087,
+    "spearman": 0.115,
+    "top1_sim_substitute": 0.9203
+   },
+   "mapped_lorocv_mean": {
+    "overlap@10": 0.0741,
+    "random@10": 0.0087,
+    "spearman": 0.045,
+    "top1_sim_substitute": 0.9994
+   },
+   "top1_sim_released_mean": 1.0
+  },
+  "gte/name": {
+   "raw": [
+    {
+     "overlap@10": 0.213,
+     "random@10": 0.0135,
+     "spearman": 0.1708,
+     "top1_sim_substitute": 0.9701,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.2093,
+     "random@10": 0.0141,
+     "spearman": 0.0805,
+     "top1_sim_substitute": 0.8985,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.1268,
+     "random@10": 0.005,
+     "spearman": 0.0806,
+     "top1_sim_substitute": 0.9107,
+     "top1_sim_released": 0.9999
+    },
+    {
+     "overlap@10": 0.1347,
+     "random@10": 0.0024,
+     "spearman": 0.0332,
+     "top1_sim_substitute": 0.9719,
+     "top1_sim_released": 1.0
+    }
+   ],
+   "mapped_lorocv": [
+    {
+     "overlap@10": 0.0972,
+     "random@10": 0.0135,
+     "spearman": 0.006,
+     "top1_sim_substitute": 1.0,
+     "top1_sim_released": 1.0,
+     "lambda": 10.0
+    },
+    {
+     "overlap@10": 0.0751,
+     "random@10": 0.0141,
+     "spearman": -0.0151,
+     "top1_sim_substitute": 0.9986,
+     "top1_sim_released": 1.0,
+     "lambda": 1.0
+    },
+    {
+     "overlap@10": 0.0311,
+     "random@10": 0.005,
+     "spearman": 0.0312,
+     "top1_sim_substitute": 0.9998,
+     "top1_sim_released": 0.9999,
+     "lambda": 10.0
+    },
+    {
+     "overlap@10": 0.075,
+     "random@10": 0.0024,
+     "spearman": 0.004,
+     "top1_sim_substitute": 0.9991,
+     "top1_sim_released": 1.0,
+     "lambda": 0.1
+    }
+   ],
+   "raw_mean": {
+    "overlap@10": 0.1709,
+    "random@10": 0.0087,
+    "spearman": 0.0913,
+    "top1_sim_substitute": 0.9378
+   },
+   "mapped_lorocv_mean": {
+    "overlap@10": 0.0696,
+    "random@10": 0.0087,
+    "spearman": 0.0065,
+    "top1_sim_substitute": 0.9994
+   },
+   "top1_sim_released_mean": 1.0
+  },
+  "bge/text": {
+   "raw": [
+    {
+     "overlap@10": 0.1878,
+     "random@10": 0.0135,
+     "spearman": 0.1784,
+     "top1_sim_substitute": 0.9593,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.2141,
+     "random@10": 0.0141,
+     "spearman": 0.1108,
+     "top1_sim_substitute": 0.8815,
+     "top1_sim_released": 1.0
+    },
+    {
+     "overlap@10": 0.1406,
+     "random@10": 0.005,
+     "spearman": 0.15,
+     "top1_sim_substitute": 0.8994,
+     "top1_sim_released": 0.9999
+    },
+    {
+     "overlap@10": 0.1546,
+     "random@10": 0.0024,
+     "spearman": 0.0219,
+     "top1_sim_substitute": 0.9773,
+     "top1_sim_released": 1.0
+    }
+   ],
+   "mapped_lorocv": [
+    {
+     "overlap@10": 0.0788,
+     "random@10": 0.0135,
+     "spearman": 0.0749,
+     "top1_sim_substitute": 0.9968,
+     "top1_sim_released": 1.0,
+     "lambda": 0.1
+    },
+    {
+     "overlap@10": 0.0527,
+     "random@10": 0.0141,
+     "spearman": 0.0648,
+     "top1_sim_substitute": 0.9956,
+     "top1_sim_released": 1.0,
+     "lambda": 0.1
+    },
+    {
+     "overlap@10": 0.0299,
+     "random@10": 0.005,
+     "spearman": 0.0264,
+     "top1_sim_substitute": 0.9998,
+     "top1_sim_released": 0.9999,
+     "lambda": 10.0
+    },
+    {
+     "overlap@10": 0.0866,
+     "random@10": 0.0024,
+     "spearman": 0.0399,
+     "top1_sim_substitute": 0.9991,
+     "top1_sim_released": 1.0,
+     "lambda": 0.1
+    }
+   ],
+   "raw_mean": {
+    "overlap@10": 0.1743,
+    "random@10": 0.0087,
+    "spearman": 0.1153,
+    "top1_sim_substitute": 0.9294
+   },
+   "mapped_lorocv_mean": {
+    "overlap@10": 0.062,
+    "random@10": 0.0087,
+    "spearman": 0.0515,
+    "top1_sim_substitute": 0.9978
+   },
+   "top1_sim_released_mean": 1.0
+  }
+ }
+}

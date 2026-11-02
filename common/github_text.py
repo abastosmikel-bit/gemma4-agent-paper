@@ -1,7 +1,8 @@
 """Fill problem_statement / created_at from GitHub (issue first, PR body as fallback).
 
-Run where api.github.com is reachable (Kaggle notebook with internet, or a laptop). Optional
-GITHUB_TOKEN env var raises the rate limit; unauthenticated (60 req/h) suffices for ~25 tasks.
+Run where api.github.com is reachable (Kaggle notebook with Internet ON, or a laptop). Optional
+GITHUB_TOKEN (env var or Kaggle Secret) raises the limit to 5,000 req/h; unauthenticated is 60 req/h (about
+25-40 tasks per hour; the script waits for the hourly reset, bounded by GITHUB_MAX_RESET_WAIT).
 
 problem_statement follows the SWE-bench convention: "<title>\n<body>". created_at is the issue's
 creation time (contamination dating). Provenance is recorded in meta: issue | pr_body.
@@ -18,19 +19,44 @@ import urllib.error
 import urllib.request
 
 
+def _token() -> str | None:
+    """GITHUB_TOKEN env var, else an optional Kaggle Secret of the same name (never required)."""
+    if os.environ.get("GITHUB_TOKEN"):
+        return os.environ["GITHUB_TOKEN"]
+    try:
+        from kaggle_secrets import UserSecretsClient  # only exists inside Kaggle notebooks
+        return UserSecretsClient().get_secret("GITHUB_TOKEN") or None
+    except Exception:
+        return None
+
+
+TOKEN = _token()
+MAX_RESET_WAIT = int(os.environ.get("GITHUB_MAX_RESET_WAIT", "3700"))  # seconds; unauthenticated limit resets hourly
+
+
 def gh(path: str) -> dict | None:
     req = urllib.request.Request(f"https://api.github.com{path}",
                                  headers={"Accept": "application/vnd.github+json", "User-Agent": "heldout-builder"})
-    if os.environ.get("GITHUB_TOKEN"):
-        req.add_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
-    for attempt in range(4):
+    if TOKEN:
+        req.add_header("Authorization", f"Bearer {TOKEN}")
+    for attempt in range(6):
         try:
             return json.loads(urllib.request.urlopen(req, timeout=30).read())
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
             if e.code in (403, 429):
-                time.sleep(min(60, 2 ** attempt * 5))
+                # primary rate limit: wait for the reset the API announces (bounded); else short backoff
+                remaining, reset = e.headers.get("x-ratelimit-remaining"), e.headers.get("x-ratelimit-reset")
+                if remaining == "0" and reset:
+                    wait = max(1, int(reset) - int(time.time()) + 2)
+                    if wait > MAX_RESET_WAIT:
+                        raise RuntimeError(f"GitHub rate limit resets in {wait}s (> {MAX_RESET_WAIT}s); "
+                                           "add a GITHUB_TOKEN Kaggle Secret or rerun later") from e
+                    print(f"rate limited; waiting {wait}s for reset", flush=True)
+                    time.sleep(wait)
+                else:
+                    time.sleep(min(60, 2 ** attempt * 5))
                 continue
             raise
     return None

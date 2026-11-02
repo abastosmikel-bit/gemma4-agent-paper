@@ -55,7 +55,30 @@ The generator is codegraph-loc (Apache-2.0, D. Mantiglia) used as a library, wit
 **Embeddings gate the prompt.** `agent_runner` adds the "Code Intelligence Tools" prompt section only if a graph `.json`
 **and** an embeddings `.npz` larger than 100 bytes exist. The `.npz` is a dict of node name → float32 vector
 (`embedding_utils.load_embeddings_from_npz`, `allow_pickle=False`). Shipping a graph without an `.npz` silently removes that
-section from the agent's prompt.
+section from the agent's prompt. The file stem uses the part of `owner/name` after the slash **case as written**
+(`build_agent_prompt`).
+
+**Released embeddings (dev):**
+- They come from an undisclosed Google-internal model (`embedding_utils.DEFAULT_FUNC_EMBEDDINGS_SSTABLE` is a `/cns/…`
+  path), so they cannot be regenerated.
+- They are 256-d, not normalized (norms 3.7–8.7), with one near-constant dimension (index 199 ≈ 3.37).
+- `search_similar_code` ranks by raw cosine (verified: the harness top-10 equals the raw-cosine top-10), so top hits
+  score ≈ 0.999.
+
+**Held-out substitute (pilot D):**
+- `Alibaba-NLP/gte-modernbert-base` on "node id + node text": Apache-2.0, safetensors only, no remote code, normalized
+  768-d (`common/embed_nodes.py`).
+- Chosen by top-10-neighbour agreement with the released vectors on 4 dev graphs (`results/embedding_parity.json`):
+
+  | candidate | agreement, raw | after linear map |
+  |---|---|---|
+  | **gte on node id + text** | **0.183** | 0.074 |
+  | bge-small on node id + text | 0.174 | 0.062 |
+  | gte on node id only | 0.171 | 0.070 |
+
+  Random agreement is 0.009. The linear map into the released geometry was cross-validated leave-one-repo-out and made
+  every candidate worse, so none is used.
+- So prompts are identical to dev's, but `search_similar_code` answers differently: count its calls in held-out runs.
 
 ## 4. Phase 2 verification (`swegemma.harness.verification.verify_task`)
 1. Fresh sandbox; extract the snapshot; git exclude; editable install and dependency injection (**Docker only**, see §5); write
@@ -88,6 +111,16 @@ Consequences for task construction:
 pytest prepends the directory of the harness's root `conftest.py`. A `src/`-layout package is shadowed by any installed copy:
 the host's site-packages in subprocess mode, the injected wheels in Docker. Observed in the subprocess sandbox: `import requests`
 and `import httpx` resolve to site-packages, while `rich` and `sqlglot` resolve to the workspace.
+
+**Rule for building tasks (verified on 6 repos).** A task is valid in the subprocess backend only if the package works
+**without being installed**:
+- flat layout;
+- no entry-point lookups. Python-Markdown loads extensions by entry-point name, so 2/9 of its tasks were valid;
+- every test-only import declared and present in the host env. sympy's `conftest.py` requires `hypothesis`: 0/14 valid
+  without it, 11/14 with it. xarray skips whole test modules without optional backends: 1/12 valid.
+
+Editable install (Docker only): sqlglot's build backend needs `setuptools_scm`, which the image lacks. The harness ignores
+the failure (`|| true`), and the flat layout still imports, so this does not affect validity.
 
 **Wheel-cache gotcha (verified).** Docker-mode dependency tarballs are cached under
 `$TMPDIR/swegemma_sp_cache_v8/sp_base.tar` by **name only**. Running a second task set with a different `wheels_dir` on the same

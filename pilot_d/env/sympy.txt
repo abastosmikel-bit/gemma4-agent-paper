@@ -1,0 +1,5 @@
+# Test-only dependencies of sympy/sympy (install_requires + sympy/conftest.py requires hypothesis)
+mpmath==1.3.0
+hypothesis==6.140.2
+attrs==25.4.0
+sortedcontainers==2.4.0

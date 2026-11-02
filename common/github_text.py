@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -31,6 +32,8 @@ def _token() -> str | None:
 
 
 TOKEN = _token()
+# same-repo closing references in a PR body ("Fixes #123"); cross-repo refs (owner/repo#N) are ignored
+CLOSE_RE = re.compile(r"\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s*:?\s+#(\d+)", re.I)
 MAX_RESET_WAIT = int(os.environ.get("GITHUB_MAX_RESET_WAIT", "3700"))  # seconds; unauthenticated limit resets hourly
 
 
@@ -77,7 +80,14 @@ def main():
             if text is None and m.get("pr_number"):
                 pr = gh(f"/repos/{t['repo']}/pulls/{m['pr_number']}")
                 if pr:
-                    text, src, created = f"{pr['title']}\n{pr.get('body') or ''}", f"pr_body#{m['pr_number']}", pr["created_at"]
+                    for n in dict.fromkeys(CLOSE_RE.findall(pr.get("body") or "")):  # PR body links the issue
+                        it = gh(f"/repos/{t['repo']}/issues/{n}")
+                        if it and "pull_request" not in it:
+                            text, src, created = f"{it['title']}\n{it.get('body') or ''}", f"issue#{n}", it["created_at"]
+                            m["issue_refs"] = sorted(set(m.get("issue_refs") or []) | {int(n)})
+                            break
+                    if text is None:
+                        text, src, created = f"{pr['title']}\n{pr.get('body') or ''}", f"pr_body#{m['pr_number']}", pr["created_at"]
             if text is not None:
                 t["problem_statement"], t["created_at"] = text.replace("\r\n", "\n"), created
                 m.update(needs_issue_text=False, problem_statement_source=src)

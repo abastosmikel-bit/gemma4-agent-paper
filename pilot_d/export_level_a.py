@@ -102,6 +102,7 @@ def main():
     p.add_argument("--embed-input", default="text")
     p.add_argument("--embed-map")
     p.add_argument("--wheels-req", nargs="*", default=[])
+    p.add_argument("--wheels-dir", help="offline: copy the test-only wheels from this directory instead of downloading")
     p.add_argument("--symlink-snapshots", action="store_true", help="local use: link instead of copying")
     a = p.parse_args()
     W, O = Path(a.work), Path(a.out)
@@ -144,7 +145,10 @@ def main():
                 build_graph(td, short, base, str(O / "graphs"))
         if a.embed_model:
             write_embeddings(gpath, O / "embeddings" / f"{short}_{base}.npz", short, a)
-    for req in a.wheels_req:  # test-only deps, both interpreters used by the two sandbox backends
+    if a.wheels_dir:  # offline (D0b): wheels were downloaded by D0a
+        for w in Path(a.wheels_dir).glob("*.whl"):
+            shutil.copy2(w, O / "wheels" / w.name)
+    for req in ([] if a.wheels_dir else a.wheels_req):  # test-only deps, both interpreters used by the two backends
         if not any(l.split("#")[0].strip() for l in open(req)):
             continue  # this repo declares no test-only deps
         for pyv in ("3.12", "3.13"):

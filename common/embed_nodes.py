@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,7 @@ def embed_texts(model_key: str, texts: list[str], batch: int = 32) -> np.ndarray
     from sentence_transformers import SentenceTransformer
 
     name, mrl = MODELS[model_key]
+    name = os.environ.get("EMBED_MODEL_PATH") or name  # offline: a local copy of the model files (D0b)
     model = SentenceTransformer(name, trust_remote_code=False, truncate_dim=mrl, device="cpu",
                                 model_kwargs={"use_safetensors": True, "dtype": torch.float32})
     model.max_seq_length = min(model.max_seq_length or 512, 512)

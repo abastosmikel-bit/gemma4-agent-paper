@@ -37,6 +37,10 @@ def env_steps(sp: dict) -> list[str]:
     acc = "None" if sp["accelerator"].startswith("None") else "GPU L4 x4"
     up = (f"Add input → Your Work → Notebooks → `{SPECS[sp['upstream']]['file'][:-6]}` (its output)."
           if sp["upstream"] else "No earlier notebook output is needed.")
+    if sp.get("upstream_ext"):
+        up = (f"Add input → Your Work → Notebooks → `{sp['upstream_ext'][:-6]}` (its output; pilot D's notebook on branch "
+              "`pilot/d-heldout`)." + ("" if not sp["upstream"] else
+                                       f" Also `{SPECS[sp['upstream']]['file'][:-6]}` (its output)."))
     if sp.get("also_attach"):
         up += f" If it has run, also `{SPECS[sp['also_attach']]['file'][:-6]}` (its output)."
     models = ("Keep the four Gemma 4 models that came with the copy." if acc != "None"
@@ -136,6 +140,48 @@ SPECS = {
              "what": "Applies each edit sampled by C03 alone to the base snapshot and runs the required tests with the "
                      "scorer's verification path. If `notebooks/C04_probe_followup__L4x4.ipynb` has run, attach its output too: "
                      "its sampled edits are verified in the same pass."},
+    "D1": {"file": "D1_heldout_probe__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+           "inputs": [COMPETITION, WHEELHOUSE, "models `google/gemma-4` → Other → `gemma-4-e4b-it-qat-w4a16-ct`, "
+                      "`gemma-4-12b-it-qat-w4a16-ct`, `gemma-4-31b-it-qat-w4a16-ct` (version 2; e2b is unused)"],
+           "upstream": None, "upstream_ext": "D0b_heldout_export__CPU.ipynb",
+           "upstream_file": "heldout_export/ and D0_summary.json",
+           "time": "≈ 1.55 L4x4 h main version (range 1.3–2.0; hard stop 2.2 h); ≈ 1.15 h fallback version, `DEPTH2 = False` "
+                   "(range 1.0–1.5; hard stop 1.6 h)",
+           "output": "D1_heldout_probe.json",
+           "extra_output": "D_selection.json, D1_heldout_probe_31b.json, D1_heldout_probe_e4b.json, D1_heldout_probe_12b.json "
+                           "(one per size), and the analysis files written by the last cell: D1_analysis.json, D1_tables.md, "
+                           "D1_fig1_criteria.png, D1_fig2_depth2.png",
+           "what": "Held-out information-ladder probe (pre-registered: docs/PLAN_D1_heldout_probe.md; spec docs/D_SPECS.md on "
+                   "paper/main). Re-checks claims 1 and 3 on pilot D's held-out tasks: selects 24 of them by the frozen rule "
+                   "(issue statements only, no sympy), captures the agent's contexts with the real harness loop, then for "
+                   "31b, e4b and 12b scores 15 depth-1 cells per task and draws 11 depth-2 samples per task. **Version switch:** "
+                   "the configuration cell has `DEPTH2 = True` (main version). Set it to `False` for the fallback version "
+                   "(depth 1 only); change nothing else. The last cell writes the final tables and figures."},
+    "D2": {"file": "D2_heldout_rollouts_12b__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+           "inputs": [COMPETITION, WHEELHOUSE, "model `google/gemma-4` → Other → `gemma-4-12b-it-qat-w4a16-ct` (version 2; "
+                      "the other three that come with the starter copy are unused)"],
+           "upstream": None, "upstream_ext": "D0b_heldout_export__CPU.ipynb",
+           "upstream_file": "heldout_export/ and D0_summary.json",
+           "time": "≈ 1.25 L4x4 h (range 1.1–1.6; hard stop 2.0 h)",
+           "output": "D2_heldout_rollouts_12b.json",
+           "extra_output": "D_selection.json, D2_failed_edits.json, and the analysis files written by the last cell: "
+                           "D2_analysis.json, D2_tables.md, D2_fig1_how_runs_ended.png, D2_fig2_summary_retention.png",
+           "what": "Held-out rollouts (pre-registered: docs/PLAN_D2_heldout_rollouts_12b.md; spec docs/D_SPECS.md on paper/main). "
+                   "Re-checks claims 2 and 4 and measures the held-out solve rate with the paper's agent configuration: the "
+                   "official sample agent at 12b with `max_output_tokens` 8192 and C06's instrumentation, no hint, 1 run on each "
+                   "of D1's 24 held-out tasks (the same selection rule; if the output of "
+                   "`notebooks/D1_heldout_probe__L4x4.ipynb` is attached, its task list is used), concurrency 5. The last cell "
+                   "writes the final tables and figures."},
+    "D1v": {"file": "D1v_test_verify__CPU.ipynb", "accelerator": "None (CPU)", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE], "upstream": "D1", "upstream_ext": "D0b_heldout_export__CPU.ipynb",
+            "upstream_file": "heldout_export/ (D0b); D1_heldout_probe.json + private/probe_records.jsonl + "
+                             "private/probe_samples_D1_*.jsonl (D1)",
+            "time": "≈ 1–3 h CPU (each distinct sampled edit is verified once); 0 GPU h",
+            "output": "D1v_test_verify.json", "extra_output": "D1v_analysis.json, D1v_tables.md (written by the last cell)",
+            "what": "Exploratory (docs/PLAN_D1_heldout_probe.md §6): applies each S-use edit sampled by "
+                    "`notebooks/D1_heldout_probe__L4x4.ipynb` alone to the held-out task's base snapshot and runs the required "
+                    "tests with the scorer's verification path, as `notebooks/C03v_test_verify__CPU.ipynb` did for the dev probe. "
+                    "Attach both D0b's output (the tasks) and D1's output (the sampled edits)."},
 }
 
 
@@ -144,6 +190,11 @@ def first_cell(key: str) -> dict:
     up = (f"**the output of `notebooks/{SPECS[sp['upstream']]['file']}`** (Add input → Your Work → Notebooks → "
           f"`{SPECS[sp['upstream']]['file'][:-6]}`; it provides `{sp['upstream_file']}`). Run that notebook first."
           if sp["upstream"] else "none (this notebook runs first).")
+    if sp.get("upstream_ext"):
+        up = (f"**the output of `notebooks/{sp['upstream_ext']}`** (pilot D, branch `pilot/d-heldout`; Add input → Your Work → "
+              f"Notebooks → `{sp['upstream_ext'][:-6]}`; it provides `{sp['upstream_file']}`)."
+              + (f" Also **the output of `notebooks/{SPECS[sp['upstream']]['file']}`**." if sp["upstream"] else "")
+              + " Run those notebooks first.")
     if sp.get("also_attach"):
         up += (f" If `notebooks/{SPECS[sp['also_attach']]['file']}` has run, also attach its output "
                f"(`{SPECS[sp['also_attach']]['file'][:-6]}`).")
@@ -187,6 +238,9 @@ def readme() -> str:
     rows = []
     for i, (k, sp) in enumerate(SPECS.items(), 1):
         up = f"`notebooks/{SPECS[sp['upstream']]['file']}` → `{sp['upstream_file']}`" if sp["upstream"] else "—"
+        if sp.get("upstream_ext"):
+            up = f"`notebooks/{sp['upstream_ext']}` (pilot/d-heldout) → `{sp['upstream_file']}`" + (
+                f"; `notebooks/{SPECS[sp['upstream']]['file']}`" if sp["upstream"] else "")
         if sp.get("also_attach"):
             up += f"; also `notebooks/{SPECS[sp['also_attach']]['file']}` if it has run"
         rows.append(f"| {i} | `notebooks/{sp['file']}` | {sp['accelerator']} | {sp['internet']} | "
@@ -202,6 +256,13 @@ def readme() -> str:
             "Next: `notebooks/C06_validation_fix_12b__L4x4.ipynb`, then `notebooks/C04_probe_followup__L4x4.ipynb` (GPU; each "
             "needs the coordinator's OK on its estimate), then `notebooks/C03v_test_verify__CPU.ipynb`. "
             "`notebooks/C06_validation_fix_12b__L4x4.ipynb` needs only C03's output, like C05.", "",
+            "**Held-out notebooks (D1, D2, D1v; spec `docs/D_SPECS.md` on `paper/main`).** Each needs the output of pilot D's "
+            "`notebooks/D0b_heldout_export__CPU.ipynb` (branch `pilot/d-heldout`) attached. "
+            "`notebooks/D1_heldout_probe__L4x4.ipynb` and `notebooks/D2_heldout_rollouts_12b__L4x4.ipynb` are independent; both "
+            "select the same 24 tasks by the frozen rule (if D1's output is attached to D2, D2 uses D1's list). "
+            "`notebooks/D1v_test_verify__CPU.ipynb` (CPU) runs after D1 with D1's output attached too. Plans: "
+            "`docs/PLAN_D1_heldout_probe.md`, `docs/PLAN_D2_heldout_rollouts_12b.md`. GPU notebooks need the coordinator's OK on "
+            "their estimate first.", "",
             "When a notebook finishes, download the output file named in the table and commit it to `results/`.", "",
             "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off, under Python 3.12 "
             "and with the real wheel install from the full wheelhouse: "
@@ -840,6 +901,365 @@ def validation_nb() -> tuple[dict, str]:
     return _nb(cells), SPECS["C05"]["file"]
 
 
+HELDOUT_PRECHECK = """
+# Held-out data (fails fast if D0b's output is not attached). Task data come from pilot D's export; the agent and the
+# sandbox from the competition. The merged directory must exist before kr.set_env() in the next cell.
+import os, sys, json
+from pathlib import Path
+sys.path.insert(0, '/kaggle/working/pilot')
+from pilot_c import heldout as ho
+EXPORT = ho.find_export()
+_ex = json.loads((EXPORT / 'EXPORT.json').read_text())
+print('held-out export:', EXPORT, {k: _ex.get(k) for k in ('tasks', 'repos', 'probe_eligible', 'needs_issue_text')})
+_d0 = ho.find_optional('D0_summary.json')
+print('D0_summary.json:', _d0, (json.loads(_d0.read_text()).get('valid_kaggle') if _d0 else 'not found'))
+DATA = ho.merged_data_dir(EXPORT, ho.competition_dir(), Path('/kaggle/working/heldout_data'))
+print('data dir:', DATA, sorted(p.name for p in DATA.iterdir()))
+"""
+
+D1_CONFIG = """
+# ---- configuration (only edit here) — docs/PLAN_D1_heldout_probe.md (frozen at {plan_commit})
+PLAN_COMMIT = '{plan_commit}'
+DEPTH2 = True                # main version. False = fallback version (depth 1 only); change nothing else
+N_TASKS = int(os.environ.get('PILOT_D_N', 24))                # PILOT_D_N: local dry runs only
+SIZES = ['gemma-4-31b-it-qat-w4a16-ct', 'gemma-4-e4b-it-qat-w4a16-ct', 'gemma-4-12b-it-qat-w4a16-ct']   # 31b writes the words
+FIND = ('L0', 'L1', 'L2', 'W', 'G-json', 'G-null', 'X-func', 'X-graph')   # depth 1, S-find
+USE = ('L0', 'L2', 'W', 'T', 'L5', 'G-json', 'G-null')                    # depth 1, S-use
+D2_FIND = ('L0', 'L2', 'G-json', 'X-graph', 'G-null')                     # depth 2, 1 sample each
+D2_USE = ('L0', 'L2', 'L5')                                               # depth 2, 2 samples each
+RESERVE_MIN_PER_SIZE = 20    # depth 2 of a size starts only if this many minutes are left per remaining size
+PROBE_GPU_UTIL = 0.75        # probe-server settings of C03/C04 (scheduling/memory only)
+PROBE_VLLM_ARGS = ('--max-num-batched-tokens', '1024')
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # capture runs the real agent config
+MAX_SESSION_HOURS = 2.2 if DEPTH2 else 1.6
+WORKERS = 16
+from pilot_c import analyze_d1 as ad
+assert (FIND, USE, D2_FIND, D2_USE) == (ad.FIND, ad.USE, ad.D2_FIND, ad.D2_USE), 'config differs from the frozen analysis'
+print('version:', 'main (depth 1 + depth 2)' if DEPTH2 else 'fallback (depth 1 only)', '| target tasks:', N_TASKS)
+"""
+
+D1_RUN = """
+from pilot_c import probe_runner as pr
+from pilot_c import probe as pb
+from common import server_watchdog as wd
+OUT = Path('/kaggle/working/D1_heldout_probe.json')
+summary = {'pilot': 'C', 'notebook': 'notebooks/D1_heldout_probe__L4x4.ipynb', 'plan': 'docs/PLAN_D1_heldout_probe.md',
+           'plan_commit': PLAN_COMMIT, 'env': kr.env_info(), 'depth2': DEPTH2,
+           'export': {k: _ex.get(k) for k in ('format', 'tasks', 'repos', 'graph_generator', 'embeddings')},
+           'sizes': [], 'd1': [], 'd2': [], 'freezes': [], 'stopped': None}
+def save():
+    summary['summary'] = pr.summarize(summary['d1'], summary['d2'])
+    summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
+    OUT.write_text(json.dumps(summary, indent=1)); print('saved', OUT, summary['session_elapsed_h'], 'h')
+
+# 1: task selection (CPU): docs/D_SPECS.md rules 1-6 + the seeded sample; the records are C's probe records
+SEL, recs = ho.select_tasks(EXPORT, N_TASKS, ho.find_optional('val_subprocess.jsonl'))
+Path('/kaggle/working/D_selection.json').write_text(json.dumps(SEL, indent=1))
+print(json.dumps({k: v for k, v in SEL.items() if k != 'selected'}, indent=1))
+summary['selection'] = SEL
+assert len(recs) >= int(os.environ.get('PILOT_MIN_TASKS', 12)), f'only {len(recs)} held-out tasks qualify: stopping before any GPU work'
+# 2: harness graph output (CPU) and the unrelated-graph control
+pr.attach_graphs(recs)
+pb.assign_null_graphs(recs)
+summary['controls'] = {r['instance_id']: {k: v for k, v in r['wrong'].items() if k.endswith('ratio')} for r in recs}
+summary['null_controls'] = {r['instance_id']: {k: r['null_graph'][k] for k in ('from', 'len_ratio', 'within_tol')}
+                            for r in recs if r.get('null_graph')}
+summary['outside_edits'] = {r['instance_id']: r['outside_edits'] for r in recs}
+# 3: the agent's exact contexts with the real harness loop (CPU, no model)
+ctxs = pr.capture_contexts(recs, BUDGET)
+summary['context_checks'] = {r['instance_id']: pr.context_check(r, ctxs[r['instance_id']]) for r in recs if r['instance_id'] in ctxs}
+summary['capture_missing'] = [r['instance_id'] for r in recs if r['instance_id'] not in ctxs]
+recs = [r for r in recs if r['instance_id'] in ctxs]
+summary['task_ids'] = [r['instance_id'] for r in recs]
+kr.PRIVATE.mkdir(parents=True, exist_ok=True)
+(kr.PRIVATE / 'probe_contexts.json').write_text(json.dumps(ctxs))
+save()
+assert recs, 'no contexts captured: stopping before any GPU work'
+
+# 4: one vLLM server per size: depth 1, then depth 2 if time is left for the remaining sizes' depth 1.
+# Each size is isolated (own try/finally, own output file). Freeze protection as in C03/C04.
+deadline = SESSION_T0 + MAX_SESSION_HOURS * 3600
+MAX_FREEZES, selfcheck_fail_streak = 2, 0
+d1_cells = [(r, st, c, 1, {}) for r in recs for st, conds in (('find', FIND), ('use', USE)) for c in conds]
+d2_cells = ([(r, 'find', c, 1) for r in recs for c in D2_FIND] + [(r, 'use', c, 2) for r in recs for c in D2_USE]) if DEPTH2 else []
+print('cells per size: depth 1', len(d1_cells), '| depth-2 cells', len(d2_cells))
+
+def retry_failed(rows, cells, depth, server, model, dl, samples_file=None):
+    \"\"\"One retry of the cells that failed with a request error (not unavailable, time guard or a frozen server).\"\"\"
+    keep = [r for r in rows if r.get('ok') or r.get('why') in ('unavailable', 'time_guard')]
+    ck = (lambda c: (c[0]['instance_id'], c[1], c[2], c[3])) if depth == 1 else (lambda c: (c[0]['instance_id'], c[1], c[2]))
+    rk = (lambda r: (r['task'], r['state'], r['cond'], r.get('rep', 1))) if depth == 1 else (lambda r: (r['task'], r['state'], r['cond']))
+    done = {rk(r) for r in keep}
+    miss = [c for c in cells if ck(c) not in done]
+    if not miss or wd.TRIPPED.is_set() or time.time() > dl - 120:
+        return rows, 0
+    print(f'retrying {len(miss)} depth-{depth} cells that failed with a request error')
+    rr = pr.run_cells(server, model, recs, ctxs, dl, *((miss, []) if depth == 1 else ([], miss)), WORKERS, samples_file=samples_file)
+    return keep + rr['d1' if depth == 1 else 'd2'], len(miss)
+
+for k, model in enumerate(SIZES):
+    size = kr.SHORT[model]
+    if summary['stopped'] or time.time() > deadline - 600:
+        summary['sizes'].append({'model': model, 'size': size, 'skipped': summary['stopped'] or 'session time guard'}); continue
+    res, startup, server, dog = {'size': size, 'd1': [], 'd2': [], 'skipped': []}, None, None, None
+    try:
+        wd.reset()
+        agent_dir = kr.prepare_agent_dir(model, BUDGET)
+        server, models, adapters, startup = kr.start_server(agent_dir, gpu_memory_utilization=PROBE_GPU_UTIL,
+                                                            extra_args=PROBE_VLLM_ARGS)
+        dog = wd.Watchdog(kr.server_root(server), lambda srv=server, tag=size: kr.stop_server(srv, tag=tag))
+        dog.start()
+        res = pr.run_cells(server, model, recs, ctxs, deadline, d1_cells, [], WORKERS, write_words_here=(size == '31b'))
+        res['d1'], res['retried_d1'] = retry_failed(res['d1'], d1_cells, 1, server, model, deadline)
+        if d2_cells:
+            d2_deadline = deadline - RESERVE_MIN_PER_SIZE * 60 * (len(SIZES) - 1 - k)
+            if wd.TRIPPED.is_set():
+                res['skipped'].append('depth2 (server frozen)')
+            elif time.time() > d2_deadline - 300:
+                res['skipped'].append('depth2 (time reserved for the remaining sizes)')
+            else:
+                r2 = pr.run_cells(server, model, recs, ctxs, d2_deadline, [], d2_cells, WORKERS,
+                                  samples_file=f'probe_samples_D1_{size}.jsonl')
+                res['d2'], res['retried_d2'] = retry_failed(r2['d2'], d2_cells, 2, server, model, d2_deadline,
+                                                            f'probe_samples_D1_{size}_retry.jsonl')
+                res['d2_minutes'], res['skipped'] = r2.get('d2_minutes'), res['skipped'] + r2['skipped']
+    except kr.GpuMemoryNotReleased as e:
+        res['error'] = f'GpuMemoryNotReleased: {e}'
+        summary['stopped'] = 'GPU memory was not released by a stopped server'
+    except Exception as e:
+        res['error'] = f'{type(e).__name__}: {str(e)[:600]}'
+    finally:
+        if dog is not None:
+            dog.stop()
+        if server is not None:
+            res['stop'] = kr.stop_server(server, tag=size)
+        res['server_error_kinds'] = kr.error_kinds(kr.LAST_SERVER_ERRORS)
+        if kr.LAST_SERVER_ERRORS and res.get('error'):
+            print(f'[{size}] server log errors (full log in private/server_logs/):', *kr.LAST_SERVER_ERRORS[-8:], sep='\\n  ')
+    if wd.TRIPPED.is_set():
+        res['server_frozen'] = True
+        summary['freezes'].append({'model': model, **wd.state()})
+        if len(summary['freezes']) >= MAX_FREEZES:
+            summary['stopped'] = 'second inference-server freeze'
+    selfcheck_fail_streak = selfcheck_fail_streak + 1 if 'SELFCHECK' in str(res.get('error', '')) else 0
+    if selfcheck_fail_streak >= 2:
+        summary['stopped'] = 'API self-check failed on two sizes in a row'
+    d1, d2 = res.pop('d1'), res.pop('d2')
+    entry = {'model': model, 'startup_s': round(startup, 1) if startup else None, **res}
+    Path(f'/kaggle/working/D1_heldout_probe_{size}.json').write_text(json.dumps(
+        {'pilot': 'C', 'notebook': 'notebooks/D1_heldout_probe__L4x4.ipynb', 'plan_commit': PLAN_COMMIT, 'size': size,
+         'task_ids': summary['task_ids'], 'entry': entry, 'd1': d1, 'd2': d2, 'summary': pr.summarize(d1, d2)}, indent=1))
+    summary['d1'] += d1; summary['d2'] += d2
+    summary['sizes'].append(entry)
+    save()
+    if res.get('error'):
+        print(f'[{size}] FAILED: {res["error"][:300]}')
+save()
+summary['words_written'] = sum(bool(r.get('words')) for r in recs)
+with open(kr.PRIVATE / 'probe_records.jsonl', 'w') as f:   # with the words: input of notebooks/D1v_test_verify__CPU.ipynb
+    for r in recs: f.write(json.dumps(pb.public_record(r)) + '\\n')
+save()
+print('L4x4 hours used by this session (wall clock):', summary['session_elapsed_h'], '| freezes:', len(summary['freezes']),
+      '| stopped:', summary['stopped'])
+"""
+
+D1_ANALYSIS = """
+# ---- standalone analysis: docs/PLAN_D1_heldout_probe.md §5, code pilot_c/analyze_d1.py (frozen with the plan; tested on
+# synthetic data). Re-runnable offline: python -m pilot_c.analyze_d1 D1_heldout_probe.json results/D1_dev_reference.json <out>
+from pilot_c import analyze_d1 as ad
+AD = ad.main('/kaggle/working/D1_heldout_probe.json', '/kaggle/working/pilot/results/D1_dev_reference.json', '/kaggle/working')
+print('figures:', AD['figures'])
+"""
+
+D_RESULTS_NOTE = """
+**When it finishes:** download {files} (numbers and our own task ids only) and commit them to `results/` on branch
+`pilot/c-bottleneck`. Everything under `/kaggle/working/private/` (contexts, records, sampled edits, summaries) and
+`/kaggle/working/heldout_data/` (links to the export) is task-derived: keep it on Kaggle, never commit it.
+"""
+
+
+def d1_nb(plan_commit: str) -> tuple[dict, str]:
+    cells = [first_cell("D1")]
+    cells += code_cells(extra=("common/stats.py", "pilot_c/analyze_c03.py", "pilot_c/analyze_d1.py", "pilot_c/heldout.py",
+                               "results/D1_dev_reference.json"))
+    cells.append(code(HELDOUT_PRECHECK))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
+    cells.append(code(D1_CONFIG.replace("{plan_commit}", plan_commit)))
+    cells.append(code(D1_RUN))
+    cells.append(code(D1_ANALYSIS))
+    cells.append(md(D_RESULTS_NOTE.format(files="`D1_heldout_probe.json`, the three `D1_heldout_probe_<size>.json`, "
+                                          "`D_selection.json`, `D1_analysis.json`, `D1_tables.md` and the two `D1_fig*.png`")))
+    return _nb(cells), SPECS["D1"]["file"]
+
+
+D2_CONFIG = """
+# ---- configuration (only edit here) — docs/PLAN_D2_heldout_rollouts_12b.md (frozen at {plan_commit})
+PLAN_COMMIT = '{plan_commit}'
+N_TASKS = int(os.environ.get('PILOT_D_N', 24))          # PILOT_D_N / PILOT_D2_BATCH: local dry runs only
+MODEL = 'gemma-4-12b-it-qat-w4a16-ct'
+CONDITION = 'O0'                                         # no hint
+BATCH = int(os.environ.get('PILOT_D2_BATCH', 12))        # results are saved after each batch
+BUDGET = dict(timeout_seconds=120, max_tool_calls=40, max_time_minutes=15)   # same agent config as C05/C06
+CONCURRENCY = 5
+SAMPLING_OVERRIDES = {'max_output_tokens': 8192}         # C06's change: prompt limit 32768 - 8192 = 24576 tokens
+SEC_PER_TASK = 728                                       # C06's no-hint mean wall time per task
+MAX_SESSION_HOURS = 2.0                                  # a batch starts only if it fits (SEC_PER_TASK x 1.3)
+TESTWHEELS = ho.install_test_wheels(EXPORT)              # test-only deps the image lacks: offline, --no-deps, nothing replaced
+print('test wheels:', TESTWHEELS)
+"""
+
+D2_RUN = """
+# ---- 12b rollouts: one vLLM server (starter settings), batches of BATCH tasks. Freeze protection as in C05/C06.
+from common import server_watchdog as wd
+out = Path('/kaggle/working/D2_heldout_rollouts_12b.json')
+summary = {'pilot': 'C', 'notebook': 'notebooks/D2_heldout_rollouts_12b__L4x4.ipynb', 'plan': 'docs/PLAN_D2_heldout_rollouts_12b.md',
+           'plan_commit': PLAN_COMMIT, 'env': kr.env_info(), 'budget': BUDGET, 'model': MODEL, 'condition': CONDITION,
+           'concurrency': CONCURRENCY, 'sampling_overrides': SAMPLING_OVERRIDES, 'test_wheels': TESTWHEELS,
+           'batches': [], 'runs': [], 'servers': [], 'freezes': [], 'restarts': 0, 'stopped': None}
+# 1: the D1 task set (deterministic rule); D1's list wins if its output is attached
+SEL, _ = ho.select_tasks(EXPORT, N_TASKS, ho.find_optional('val_subprocess.jsonl'))
+TASKS = SEL['selected']
+_d1 = ho.find_optional('D_selection.json')
+if _d1 is not None:
+    _d1sel = json.loads(_d1.read_text())['selected']
+    summary['d1_selection_matches'] = (_d1sel == TASKS)
+    if _d1sel != TASKS:
+        _known = {json.loads(l)['instance_id'] for l in open(EXPORT / 'tasks.jsonl')}
+        assert set(_d1sel) <= _known, 'D1 selected tasks that are not in this export: attach the same D0b output as D1'
+        print('D1 selected a different list; using D1 list:', _d1sel)
+        TASKS = _d1sel
+summary['selection'], summary['task_ids'] = SEL, TASKS
+Path('/kaggle/working/D_selection.json').write_text(json.dumps({**SEL, 'used_by_D2': TASKS}, indent=1))
+assert len(TASKS) >= int(os.environ.get('PILOT_MIN_TASKS', 12)), f'only {len(TASKS)} held-out tasks: stopping before any GPU work'
+gold = kr.build_gold(TASKS)
+BATCHES = [TASKS[i:i + BATCH] for i in range(0, len(TASKS), BATCH)]
+MAX_FREEZES = 2
+
+def save():
+    rows = [x for r in summary['runs'] for x in r['rows']]
+    summary['resolved'], summary['runs_done'] = sum(bool(x['resolved']) for x in rows), len(rows)
+    summary['session_elapsed_h'] = round((time.time() - SESSION_T0) / 3600, 3)
+    summary['saved_utc'] = time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime())
+    out.write_text(json.dumps(summary, indent=1)); print('saved', out, summary['session_elapsed_h'], 'h')
+
+def start_watched():
+    wd.reset()
+    agent_dir = kr.prepare_agent_dir(MODEL, BUDGET, SAMPLING_OVERRIDES)
+    server, models, adapters, startup = kr.start_server(agent_dir)   # starter settings (gpu_memory_utilization 0.90)
+    dog = wd.Watchdog(kr.server_root(server), lambda srv=server: kr.stop_server(srv, tag='12b'))
+    dog.start()
+    summary['servers'].append({'model': MODEL, 'startup_s': round(startup, 1)})
+    return agent_dir, server, models, adapters, dog
+
+server = dog = None
+try:
+    agent_dir, server, models, adapters, dog = start_watched()
+    summary['agent'] = kr.describe_agent(agent_dir)
+    for bi, bt in enumerate(BATCHES, 1):
+        need_h = len(bt) * SEC_PER_TASK / CONCURRENCY / 3600 * 1.3
+        if summary['stopped'] or (time.time() - SESSION_T0) / 3600 + need_h > MAX_SESSION_HOURS:
+            summary['batches'].append({'batch': bi, 'tasks': bt, 'skipped': summary['stopped'] or
+                                       f'session time guard (needs ~{need_h:.2f} h)'}); continue
+        if wd.TRIPPED.is_set():   # the previous batch froze the server: restart it for this one
+            dog.stop(); kr.stop_server(server, tag='12b')
+            agent_dir, server, models, adapters, dog = start_watched()
+            summary['restarts'] += 1
+        run = kr.run_condition(agent_dir, models, adapters, bt, gold, CONDITION, 1, CONCURRENCY, tag=f'b{bi}')
+        run['batch'] = bi
+        if wd.TRIPPED.is_set():
+            run['server_frozen'] = True
+            summary['freezes'].append({'batch': bi, **wd.state()})
+            if len(summary['freezes']) >= MAX_FREEZES:
+                summary['stopped'] = 'second inference-server freeze'
+        summary['runs'].append(run)
+        agg = run['aggregate']
+        summary['batches'].append({'batch': bi, 'tasks': bt, 'resolved': agg['resolved'], 'batch_wall_s': run['batch_wall_s']})
+        if not wd.TRIPPED.is_set() and agg['n_tasks'] and agg['errors'] == agg['n_tasks'] and not agg['tool_calls_mean']:
+            summary['stopped'] = 'every task failed without a single tool call (agent cannot reach the model)'
+        save()
+except kr.GpuMemoryNotReleased as e:
+    summary['stopped'] = f'GPU memory was not released: {e}'
+except Exception as e:
+    summary['stopped'] = f'{type(e).__name__}: {str(e)[:400]}'
+    summary['server_error_kinds'] = kr.error_kinds(kr.LAST_SERVER_ERRORS)
+finally:
+    if dog is not None:
+        dog.stop()
+    if server is not None and summary['servers']:
+        summary['servers'][-1]['stop'] = kr.stop_server(server, tag='12b')
+    save()
+# failed-edit replay (CPU, counts only; pilot_c/edit_failures.py as for C06)
+import glob
+from pilot_c import edit_failures as ef
+_traces = sorted(glob.glob(str(kr.PRIVATE / 'runs' / '12b' / '**' / 'trace_*.json'), recursive=True))
+if _traces:
+    ef.main('/kaggle/working/D2_failed_edits.json', str(out), *_traces)
+print('L4x4 hours used by this session (wall clock):', summary['session_elapsed_h'], '| resolved', summary.get('resolved'),
+      'of', summary.get('runs_done'), '| stopped:', summary['stopped'])
+"""
+
+D2_ANALYSIS = """
+# ---- standalone analysis: docs/PLAN_D2_heldout_rollouts_12b.md §5, code pilot_c/analyze_d2.py (frozen with the plan; tested
+# on synthetic data). Re-runnable offline: python -m pilot_c.analyze_d2 D2_heldout_rollouts_12b.json results/D2_dev_reference.json <out> D2_failed_edits.json
+from pilot_c import analyze_d2 as a2
+A2 = a2.main('/kaggle/working/D2_heldout_rollouts_12b.json', '/kaggle/working/pilot/results/D2_dev_reference.json', '/kaggle/working',
+             '/kaggle/working/D2_failed_edits.json', '/kaggle/working/private/runs/12b/*/summaries.jsonl')
+print('figures:', A2['figures'], '| setting check:', A2['setting_check'])
+"""
+
+
+def d2_nb(plan_commit: str) -> tuple[dict, str]:
+    cells = [first_cell("D2")]
+    cells += code_cells(extra=("pilot_c/heldout.py", "pilot_c/edit_failures.py", "pilot_c/analyze_d2.py",
+                               "results/D2_dev_reference.json"))
+    cells.append(code(HELDOUT_PRECHECK))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
+    cells.append(code(D2_CONFIG.replace("{plan_commit}", plan_commit)))
+    cells.append(code(D2_RUN))
+    cells.append(code(D2_ANALYSIS))
+    cells.append(md(D_RESULTS_NOTE.format(files="`D2_heldout_rollouts_12b.json`, `D_selection.json`, `D2_failed_edits.json`, "
+                                          "`D2_analysis.json`, `D2_tables.md` and the two `D2_fig*.png`")))
+    return _nb(cells), SPECS["D2"]["file"]
+
+
+D1V_RUN = """
+# Verify D1's sampled S-use edits (records and samples are next to each other in D1's attached output)
+from pilot_c import probe_runner as pr
+print('test wheels:', ho.install_test_wheels(EXPORT))   # the subprocess sandbox uses this image's packages
+sample_files = sorted(Path(os.environ.get('PILOT_INPUT_ROOT', '/kaggle/input')).glob('**/private/probe_samples_D1_*.jsonl'))
+assert sample_files, 'no sampled edits found: attach the output of notebooks/D1_heldout_probe__L4x4.ipynb'
+recs_path = sample_files[0].parent / 'probe_records.jsonl'
+print('records', recs_path, 'samples', [p.name for p in sample_files])
+OUTV = Path('/kaggle/working/D1v_test_verify.json')
+res = pr.verify_samples(recs_path, sample_files, OUTV)
+res['rows'] = [{**r, 'source': 'D1'} for r in res['rows']]
+res['notebook'] = 'notebooks/D1v_test_verify__CPU.ipynb'
+OUTV.write_text(json.dumps(res, indent=1))
+print(json.dumps(res['summary'], indent=1))
+"""
+
+D1V_ANALYSIS = """
+# ---- analysis (pilot_c/analyze_d1v.py; tested on synthetic data). Re-runnable offline:
+# python -m pilot_c.analyze_d1v D1v_test_verify.json D1_heldout_probe.json results/D1v_dev_reference.json <out>
+from pilot_c import analyze_d1v as avd
+_d1 = sample_files[0].parent.parent / 'D1_heldout_probe.json'
+AV = avd.main(str(OUTV), str(_d1 if _d1.exists() else kr.find_input_json('D1_heldout_probe.json')),
+              '/kaggle/working/pilot/results/D1v_dev_reference.json', '/kaggle/working')
+"""
+
+
+def d1v_nb() -> tuple[dict, str]:
+    cells = [first_cell("D1v")]
+    cells += code_cells(extra=("pilot_c/heldout.py", "pilot_c/analyze_c03v.py", "pilot_c/analyze_d1v.py",
+                               "results/D1v_dev_reference.json"))
+    cells.append(code(HELDOUT_PRECHECK))
+    cells.append(code(SETUP.format(gpu="False", only="kr.CPU_WHEELS")))
+    cells.append(code(D1V_RUN))
+    cells.append(code(D1V_ANALYSIS))
+    cells.append(md(D_RESULTS_NOTE.format(files="`D1v_test_verify.json`, `D1v_analysis.json` and `D1v_tables.md`")))
+    return _nb(cells), SPECS["D1v"]["file"]
+
+
 def _nb(cells: list[dict]) -> dict:
     for i, c in enumerate(cells):
         c["id"] = f"cell-{i:03d}"  # nbformat >= 4.5 requires cell ids
@@ -847,9 +1267,15 @@ def _nb(cells: list[dict]) -> dict:
                                          "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
 
 
+# Frozen-plan commits written into the D notebooks (the commit that froze each plan and its analysis code).
+PLAN_COMMITS = {"D1": "682a34f01fc90908e786b75845de382d9d2cce49", "D2": "682a34f01fc90908e786b75845de382d9d2cce49"}
+
+
 def main() -> None:
     out = ROOT / "notebooks"
-    for build in (gold_check_nb, smoke_nb, probe_nb, followup_nb, validation_nb, validation_fix_nb, probe_verify_nb):
+    builds = [gold_check_nb, smoke_nb, probe_nb, followup_nb, validation_nb, validation_fix_nb, probe_verify_nb,
+              lambda: d1_nb(PLAN_COMMITS["D1"]), lambda: d2_nb(PLAN_COMMITS["D2"]), d1v_nb]
+    for build in builds:
         nb, fname = build()
         src = "".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%"))
         for i, c in enumerate(nb["cells"]):  # every generated code cell must at least parse

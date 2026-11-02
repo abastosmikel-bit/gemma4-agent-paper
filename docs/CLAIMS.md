@@ -21,23 +21,52 @@ listed here or in `RESULTS.md` is not used. Pull before editing.
     - reproduction test, T − L0: +1.5 / +2.0 / +0.4.
   - **Depth 2 (sampled first action):** the file + function hint raises "reads the gold function" from 13% to 97% (e4b),
     from 3% to 93% (12b, from C04) and from 10% to 93% (31b).
-  - **Information threshold** (lowest rung where a sampled edit is right): `results/C03C04_tables.md` T5 counts exact
-    matches only. **Pending C03v**, which adds edits that pass the tests (`exact or solves`).
+  - **Information threshold** (C03v; lowest S-use rung where ≥ 1 of 2 sampled first actions is an edit that is exact or
+    passes the required tests). Tasks at L0 / L2 / L3 / L4 / L5 / above L5 / not classifiable (a rung missing):
+    - e4b: 7 / 2 / 5 / 2 / 5 / 8 / 1. Median rung L4.
+    - 12b: 1 / 0 / 2 / 1 / 4 / 19 / 3. Median above L5.
+    - 31b: 0 / 1 / 1 / 1 / 9 / 15 / 3. Median above L5.
+    - Exact matches only (`results/C03C04_tables.md` T5): e4b 1 / 1 / 1 / 2 / 9 / 13 / 3 (median L5); 12b
+      0 / 0 / 1 / 1 / 5 / 20 / 3; 31b 0 / 0 / 1 / 0 / 10 / 16 / 3.
+    - Tasks with a threshold at L4 or below: e4b 16 vs 5 under exact only; 12b 4 vs 2; 31b 3 vs 1.
+  - **Doesn't edit vs edits wrongly (C03v K1).** 12b and 31b score low because their first action is rarely an edit, not
+    because their edits are wrong.
+    - Share of samples that edit the gold file, 12b / 31b: L2 2% / 2%, W 6% / 20%, L5 30% / 46%. The rest mostly read
+      more code or run a command.
+    - Share of those edits that pass: L5 11/16 (69%) / 20/25 (80%); W 3/3 / 8/11; L2 1/1 / 1/1.
+    - e4b is the opposite: it edits in 74–88% of samples at L2, W and L5, but only 28% / 50% / 65% of its edits pass.
+  - **Words vs location at use, tested (C03v K2;** paired on the 27 tasks with L0, L2 and W). Pass rate L0 / L2 / W:
+    e4b 20% / 28% / 37%; 12b 4% / 2% / 6%; 31b 0% / 2% / 15%.
+    - W − L2: e4b +9% [+2, +19], 31b +13% [+2, +28], 12b +4% [0, +9]; Wilcoxon Holm p 0.25 / 0.25 / 1.
+    - W − L0: e4b +17% [+6, +30], Holm p = 0.047; 31b +15% [+4, +28], Holm p = 0.19.
+    - Cochran's Q on "≥ 1 sample passes" across L0, L2, W: e4b p = 0.050, 31b p = 0.030, 12b p = 0.14.
+    - Few tasks change between conditions (at most 7 per pair), so the paired tests have little power.
+  - **Exact-match grading undercounts (C03v K3).** Of e4b's passing edits, 54 of 65 at L0–L4 (73–91% per rung) and 8 of
+    30 at L5 are not exact matches. For 12b and 31b at L5: 1 of 11 and 3 of 20.
 - **Source.** `results/C03_probe.json` (9bef339) + `results/C04_probe_followup.json`; analysis `results/C03C04_tables.md`
   T1, T2, T3, T5 and `results/C03C04_analysis.json` (70c018a; C03-only versions at 70e8d9b). Plan `docs/PLAN.md` (frozen
-  at 168d115).
-- **Shown in.** `results/figures/C03C04_fig1_depth1_deltas.png`; `results/C03C04_tables.md` T1-find, T1-use, T2.
+  at 168d115). Test verification: `results/C03v_test_verify.json`, `results/C03v_tables.md` V1–V3 and
+  `results/C03v_analysis.json` (`notebooks/C03v_test_verify__CPU.ipynb`, Kaggle CPU; reproduced locally), checks
+  `results/C03v_checks.md` K1–K3 (`pilot_c/c03v_checks.py`, exploratory, `docs/PLAN.md` §11 item 15; a602a65).
+- **Shown in.** `results/figures/C03C04_fig1_depth1_deltas.png`; `results/C03C04_tables.md` T1-find, T1-use, T2;
+  `results/figures/C03v_fig_solves.png`; `results/C03v_tables.md` V2.
 - **Caveats.**
   - Single run, 30 tasks; three sizes (no e2b). 12b's cells come from two sessions (C03 + C04).
   - It is the likelihood of one canonical action, not a solve rate.
   - The S-use context is the captured state right after reading the gold span.
+  - C03v grades only the first sampled action (1–2 samples per cell). A sample that reads or runs something first counts
+    as not passing, so for 12b and 31b the threshold mostly measures willingness to edit now (K1).
+  - "Passes" is the scorer's verification of the sampled edit applied alone. A passing edit can differ from the gold fix.
+    "Exact" compares only the scored edit inside the gold function: 11 of 30 gold patches also change lines outside it,
+    and 3 exact e4b edits at L5 fail for that reason.
   - The words rung was written by 31b from the gold diff.
   - The link to agent outcomes is not established. H6 failed in C05 (AUC 0.43, confounded by crashes) and again in C06
     without crashes: AUC 0.27 [0.05, 0.56] over the 19 no-hint failures with a predictor value (6 positives). The
     exploratory find-step predictor gave 0.45 [0.16, 0.76]. So the probe's per-task numbers do not predict which tasks
     the hint rescues in full runs (`results/C06_analysis.json` A4).
 - **Status.** Supported at depth 1 for e4b, 12b and 31b. The probe's per-task numbers do not predict hint flips in full
-  runs (H6 failed in C05 and C06). **Pending:** C03v (threshold with test passes), D (held-out tasks).
+  runs (H6 failed in C05 and C06). At depth 2 with tests (C03v), e4b's median threshold is L4; 12b's and 31b's are above
+  L5 because they rarely edit in their first action. **Pending:** D (held-out tasks).
 
 ## 2. Compaction erases the task from the agent's context
 

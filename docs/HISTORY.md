@@ -154,9 +154,25 @@ their sources are in `docs/CLAIMS.md` and `RESULTS.md`; terms are in `docs/GLOSS
 - **Changed thinking:** claim 3 became "find: the graph helps through the file it names; use: not through content"
   (`docs/CLAIMS.md`).
 
-### Next — C03v (CPU) and D
-- **C03v:** checks which sampled edits actually pass the tests. It turns the information threshold from "exact match" into
-  "exact or passes".
-- **D:** pilot D's held-out tasks are needed to re-check claims 1, 3 and 5 out of distribution.
+### 2026-11-02 — C03v: do the probe's sampled edits pass the tests? (Kaggle CPU, no GPU)
+- **Asked:** apply each edit the probe sampled at the use step on its own and run the task's required tests. Use the
+  result to finish the information threshold ("exact or passes" instead of "exact" only).
+- **Came out:**
+  - 435 of 1,746 sampled first actions were edits that applied and could be tested;
+  - the lowest rung with a right edit is L4 (the change in words) for the median e4b task; for 12b and 31b it is above L5;
+  - 12b and 31b score low because they rarely edit as their first action (2% at L2, 30–46% even with the exact diff),
+    not because they edit wrongly: 69–80% of their edits with the diff pass. e4b edits almost every time but often
+    wrongly;
+  - pass rates are higher when the change is described in words than when the location is named: e4b 37% vs 28% (20%
+    with neither), 31b 15% vs 2% (0%). Only a few of the 27 paired tasks change, so the tests are weak; only e4b's
+    words vs nothing survives correction;
+  - exact-match grading misses most correct edits: 54 of e4b's 65 passing edits below L5 are not exact copies of the gold
+    fix.
+- **Changed thinking:**
+  - the threshold is real for e4b, but for the larger models it mostly measures willingness to edit right away;
+  - grading by tests, not exact match, is necessary.
 
-**GPU used by pilot C:** 0.84 + 0.29 + 2.92 + 2.02 + 2.71 + 1.41 ≈ **10.2 L4x4 h**.
+### Next — D
+- Pilot D's held-out tasks are needed to re-check claims 1, 3 and 5 out of distribution.
+
+**GPU used by pilot C:** 0.84 + 0.29 + 2.92 + 2.02 + 2.71 + 1.41 ≈ **10.2 L4x4 h** (C00 and C03v ran on CPU).

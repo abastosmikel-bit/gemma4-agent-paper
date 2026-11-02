@@ -58,16 +58,17 @@ L1–L5 are cumulative; T, W and the G-conditions are single hints.
 - **hit_file / hit_func.** At the find step: the sampled action reads the gold file / overlaps the gold function.
 - **on_target / exact / applies.** At the use step:
   - on_target: the edit changes lines near the gold change;
-  - exact: it equals the gold change;
+  - exact: it equals the gold change inside the gold function (the scored edit);
   - applies: the harness can apply it.
 - **followed_wrong.** The action went where a wrong hint (or the unrelated graph) pointed.
 - **edit rate.** The share of sampled first actions that edit the gold file.
+- **solve rate given an edit.** Of the sampled first actions that edit the gold file, the share that pass the tests.
 - **solves.** The sampled edit, applied alone, passes the required tests (checked in C03v).
 - **resolved.** A full run's patch is non-empty and passes the required tests (the scorer's rule).
 - **fail→pass flip.** A task unresolved without the hint and resolved with it.
 - **discordant.** A task that resolves in exactly one of the two conditions.
-- **Information threshold.** The lowest ladder rung at which a sampled edit is right (exact; after C03v, exact or
-  solves).
+- **Information threshold.** The lowest ladder rung at which a sampled edit is right: exact or solves (C03v).
+  `results/C03C04_tables.md` T5 counted exact only.
 
 ## Hypotheses (fixed before the data; `docs/PLAN.md` §6)
 

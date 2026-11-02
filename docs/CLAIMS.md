@@ -11,20 +11,24 @@ listed here or in `RESULTS.md` is not used. Pull before editing.
 - **Numbers.** Probe, depth 1. Δ log p of the canonical action, in nats; median [95% bootstrap CI]; sizes e4b / 12b / 31b.
   - **S-find, file + function hint (L2 − L0):** +19.4 [17.5, 24.1] / +25.3 [21.3, 29.3] / +33.4 [26.6, 45.6]. The target is
     the correct `read_file`.
-  - **S-use, same hint (L2 − L0):** +1.9 [1.0, 3.4] / −1.7 [−3.4, 2.3] / −1.5 [−3.0, 0.6]. The target is the canonical
+  - **S-use, same hint (L2 − L0):** +1.9 [1.0, 3.4] / −1.8 [−3.3, 1.9] / −1.5 [−3.0, 0.6]. The target is the canonical
     edit, after the agent has read the gold code.
-  - **Find minus use (H1, pre-registered):** +17.2 / +25.8 / +37.9. Holm p < 0.001 for every size; supported.
+  - **Find minus use (H1, pre-registered):** supported for all three sizes, Holm p < 0.001. 12b is now complete (n = 30)
+    with C04's cells merged in (`results/C03C04_tables.md` T2).
   - **S-use, other rungs:**
     - change in words, W − L0: +11.4 / +15.0 / +11.6;
     - full ladder with the exact diff, L5 − L0: +29.2 / +42.4 / +33.8;
     - reproduction test, T − L0: +1.5 / +2.0 / +0.4.
-  - **Depth 2 (sampled first action):** the file + function hint raises "reads the gold function" from 13% to 97% (e4b)
-    and from 10% to 93% (31b).
-- **Source.** `results/C03_probe.json` (9bef339); analysis `results/C03_tables.md` T1, T2, T3 and
-  `results/C03_analysis.json` (70e8d9b). Plan `docs/PLAN.md` (frozen at 168d115).
-- **Shown in.** `results/figures/C03_fig1_depth1_deltas.png`; tables T1-find, T1-use, T2.
+  - **Depth 2 (sampled first action):** the file + function hint raises "reads the gold function" from 13% to 97% (e4b),
+    from 3% to 93% (12b, from C04) and from 10% to 93% (31b).
+  - **Information threshold** (lowest rung where a sampled edit is right): `results/C03C04_tables.md` T5 counts exact
+    matches only. **Pending C03v**, which adds edits that pass the tests (`exact or solves`).
+- **Source.** `results/C03_probe.json` (9bef339) + `results/C04_probe_followup.json`; analysis `results/C03C04_tables.md`
+  T1, T2, T3, T5 and `results/C03C04_analysis.json` (70c018a; C03-only versions at 70e8d9b). Plan `docs/PLAN.md` (frozen
+  at 168d115).
+- **Shown in.** `results/figures/C03C04_fig1_depth1_deltas.png`; `results/C03C04_tables.md` T1-find, T1-use, T2.
 - **Caveats.**
-  - Single run, 30 tasks; 12b has 27–28 tasks until C04 completes it; no e2b.
+  - Single run, 30 tasks; three sizes (no e2b). 12b's cells come from two sessions (C03 + C04).
   - It is the likelihood of one canonical action, not a solve rate.
   - The S-use context is the captured state right after reading the gold span.
   - The words rung was written by 31b from the gold diff.
@@ -32,8 +36,8 @@ listed here or in `RESULTS.md` is not used. Pull before editing.
     without crashes: AUC 0.27 [0.05, 0.56] over the 19 no-hint failures with a predictor value (6 positives). The
     exploratory find-step predictor gave 0.45 [0.16, 0.76]. So the probe's per-task numbers do not predict which tasks
     the hint rescues in full runs (`results/C06_analysis.json` A4).
-- **Status.** Supported at depth 1. **Pending:** C04 (12b complete, which replaces the 12b numbers), C06 (rollout
-  validation without crashes), D (held-out tasks).
+- **Status.** Supported at depth 1 for e4b, 12b and 31b. The probe's per-task numbers do not predict hint flips in full
+  runs (H6 failed in C05 and C06). **Pending:** C03v (threshold with test passes), D (held-out tasks).
 
 ## 2. Compaction erases the task from the agent's context
 
@@ -75,26 +79,50 @@ listed here or in `RESULTS.md` is not used. Pull before editing.
 - **Status.** Supported (C05 + C06; 113/113 compacted runs compacted the prompt event; 0/1,472 C06 post-compaction requests
   contain the original statement).
 
-## 3. The graph tool's gain is mostly the file name
+## 3. Graph-tool output: at the find step its gain comes from the file it names; at the use step it doesn't come from graph content
 
-- **Numbers.** Probe, S-find; e4b / 12b / 31b.
-  - Node names are dotted module paths (e.g. `fastapi.sse._check_id_no_null`), so every `get_code_subgraph` output names
-    the file. Seen in the harness tool output used to build `probe_records`.
-  - **Right vs wrong focus in the same file:** via graph, G-json − X-graph: +1.0 [0.2, 1.8] / +1.6 [−0.3, 3.0] /
-    +1.2 [−0.5, 4.0]. Via text, L2 − X-func: +11.4 / +18.5 / +20.1.
-  - **Graph vs text file hint:** G-json − L0: +11.0 / −1.3 / +7.4. L1 − L0 (text file): +6.3 / +8.2 / +6.9.
-  - **Depth 2:** "reads the gold file", L0 → G-json: e4b 37% → 83%, 31b 43% → 70%. "Reads the gold function": 13% → 33%
-    and 10% → 20%; with the text function hint, 97% and 93%.
-- **Source.** `results/C03_tables.md` T1-find, T3, T6; `results/C03_analysis.json` → `exploratory.graph` (70e8d9b).
-- **Shown in.** `results/figures/C03_fig3_graph_vs_text.png`; T6.
+(Revised 2026-11-02 after C04. Was "the graph tool's gain is mostly the file name". The coordinator's proposed wording,
+"graph gain doesn't come from graph content", holds at the use step but not at the find step; see the numbers.)
+
+- **Numbers.** Probe, depth 1; Δ in nats, median [95% CI]; e4b / 12b / 31b. G-json = graph with the right focus;
+  X-graph = graph focused on a wrong function **in the right file**; G-null = the same kind of graph for an **unrelated
+  file** (another task's gold subgraph), with the same context ending.
+  - **Find, the right file matters:** G-json − G-null = +6.5 [4.1, 8.9] / +9.8 [6.4, 12.7] / +4.6 [2.0, 9.6]. This is about
+    the size of the text file hint (L1 − L0: +6.3 / +8.2 / +6.9).
+  - **Find, the function in the graph barely matters:** G-json − X-graph = +1.0 / +1.5 / +1.2. In text, the right
+    function vs a wrong one is worth +11.4 / +18.6 / +20.1.
+  - **Find, words beat every graph:** the text hint naming the function beats the right-focus graphs by 7.2–7.6 (e4b),
+    24.8–28.5 (12b) and 24.3–25.4 (31b) nats, and the unrelated graph by 15.8 / 34.6 / 30.0.
+  - **Use, graph content adds nothing:** G-null − L0 = +0.5 / +9.3 / +8.7 vs G-json − L0 = +1.2 / +7.5 / +5.3. The
+    unrelated graph equals or beats the right one, so the use-step gain comes from the extra tool round-trip, not from what
+    the graph says.
+  - **Depth 2, find (1 sample per task):** "reads the gold file" L0 → G-json → X-graph → G-null:
+    - e4b 37% → 83% → 63% → 20%;
+    - 12b 20% → 70% → 50% → 13%;
+    - 31b 43% → 70% → 47% → 27%.
+
+    The unrelated graph pulls 3–20% of first reads to its own file.
+  - **Why X-graph lifts e4b's find score by +9.5 (action/arguments split):** the gain splits into the call header
+    (`<|tool_call>call:read_file`) +6.5 [5.1, 7.0] and the arguments +3.4 [2.5, 5.7].
+    - The header part is about the context ending. After any graph turn, e4b is more ready to call `read_file` at once;
+      the unrelated graph also gives +5.3 there. At L0, e4b often starts with search or a command instead (depth 2: 10 of
+      30 first actions).
+    - The arguments part is the file path the graph names. G-null's arguments gain is −0.2.
+    - For 12b and 31b the header goes the other way (−14 and −4 to −7 nats after a graph turn), because their templates
+      put an empty thought block after a user turn but not after a tool response. Their arguments still gain +10 to +12
+      from the right graphs (+6 to +10 from G-null).
+  - **Encodings (H3):** JSON vs edges vs adjacency differ by ≤ 1.4 nats. Edges/adjacency beat JSON slightly for e4b (+0.6 /
+    +0.8, supported); for 31b the differences exceed the 0.3 margin.
+- **Source.** `results/C04_tables.md` E1–E3, `results/C04_analysis.json`, `results/C03C04_tables.md` T1, T2 (H3), T3, T6
+  (pilot/c-bottleneck 70c018a); node names: harness `get_code_subgraph` output.
+- **Shown in.** `results/figures/C04_fig4_graph_control.png`, `results/figures/C04_fig5_action_args.png`,
+  `results/figures/C03C04_fig3_graph_vs_text.png`.
 - **Caveats.**
-  - Exploratory.
-  - Graph contexts end in a tool response, text contexts in a user turn (and for 31b/12b the scoring mode differs). At
-    S-use a graph turn adds +5 (31b) and +8 (12b) whatever its focus, so part of the graph gain may be this ending
-    effect.
-  - Single run.
-- **Status.** Partial. **Pending: C04** (G-null control with the same ending, X-graph at depth 2, the action/arguments
-  split of the gain).
+  - Exploratory (`docs/PLAN.md` §11 items 11–14), single run.
+  - G-null donors are length-matched within ±15% for 23 of 30 tasks (median ratio 0.93, minimum 0.34).
+  - The split's header part is at most 2 tokens after `call:<tool>`.
+  - One synthetic graph turn, not an agent exploring the graph.
+- **Status.** Supported as revised (find: file content; use: not content).
 
 ## 4. Context-window crashes: the effective prompt limit is 16,384 tokens, and compaction can't keep up
 

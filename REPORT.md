@@ -4,6 +4,86 @@ Branch `pilot/d-heldout` (orphan). The session was assigned `claude/cool-archime
 history was pushed to `pilot/d-heldout` with a plain push, and nothing else was touched. **GPU hours used: 0.**
 The improved prompt I worked from is `docs/PROMPT.md`.
 
+## 0. Round 2 (2026-11-02): D1/D2 specs, the embeddings confound, the Level A export
+
+**Asked:**
+1. D1/D2 specs on `paper/main` (`docs/D_SPECS.md`) so pilot C can price them: a version that fits ≈ 3 L4x4 h and a
+   cheaper fallback.
+2. Fix the missing-embeddings confound.
+3. The held-out export in `docs/PROBE_INPUT.md` format.
+
+**GPU used: 0.**
+
+**Delivered:**
+- **`docs/D_SPECS.md` on `paper/main`:** D0 (CPU export, claim 5), D1 (probe, claims 1 and 3), D2 (12b rollouts, C06
+  configuration, claims 2 and 4).
+  - Main version ≈ 2.8 L4x4 h at N = 24 (≈ 0.42 + 0.098 N h).
+  - Fallback ≈ 1.2 h (D1 depth 1 only); floor ≈ 0.9 h.
+  - Pricing units and replication criteria are included.
+- **Embeddings confound fixed.** The export ships disclosed substitute embeddings (bge-small, chosen by measured
+  neighbour agreement and speed). The harness's own prompt builder shows "Code Intelligence Tools" for 101/101 tasks (0/101 without the file); the graph tools answer on 8/8 sampled tasks.
+- **Level A export (local, outside git):** 101 valid held-out tasks from 5 repos, with graphs, embeddings, test-only
+  wheels, `heldout_meta.jsonl` and `EXPORT.json`. Pilot C's own probe code runs on it unmodified: eligibility 61/101
+  (my mirror agrees 101/101), 51 probe records build ok, 10 fail C's read-window rule.
+  - The copy for C is produced on Kaggle by `notebooks/D0_heldout_export__CPU.ipynb`, which also fetches the issue text
+    this session cannot reach.
+  - Its papermill dry run (2 repos, fake `/kaggle`) passes all 8 content checks.
+
+**Decisions I took, with reasons:**
+- **D2 is O0 only.** C06 left the dev hint effect at +4 net (p = 0.29), so a held-out O0-vs-O-all test at N ≈ 24 is
+  uninformative. Claims 2 and 4 are measured in every run. O-all is an add-on (+1.1 h).
+- **D1 includes depth 2.** Claims 1 and 3 quote depth-2 behaviour ("reads the gold function 13% → 97%"), and those
+  effects are large enough for N ≈ 24. Cost +0.4 h.
+- **Task set:** probe-ready, issue-linked (no fix hints), no hang bug, ≥ 2 tasks per repo, graph ≤ 20k nodes; N = 24,
+  at most 12 per repo. Today's pool gives 22 (sqlglot 12, networkx 5, tomlkit 5); D0's API linking can raise it to 32.
+- **Added tomlkit** (MIT, flat, pytest only; 20/20 valid) as a third repo. The graph-size rule removed sympy from
+  D1/D2.
+- **Embeddings:**
+  - bge-small-en-v1.5, raw, no map. Open models agree on 17–18% of released top-10 neighbours (random 0.9%).
+  - A cross-validated linear map lowered agreement, so none is used.
+  - bge is 4× faster than gte on CPU (measured), at equal agreement.
+- **F2P/P2P stay out of `tasks.jsonl`.** With them, the scorer would use them as the required tests instead of the
+  test-patch rule dev tasks use. They are in `heldout_meta.jsonl`.
+- **Dropped xarray** (1/12 valid; optional backends) and **Python-Markdown** (2/9; entry points need an installed copy).
+- **Declined:**
+  - running code from Hugging Face model repos (`trust_remote_code`): the safety check refused it, and I switched to
+    models that need none;
+  - accepting the EmbeddingGemma licence on your Kaggle account: your decision.
+
+**Numbers** (local, single run; `results/heldout_pool_local.json`, `results/embedding_parity.json`):
+
+| repo | valid / built | probe-ready (C's code) |
+|---|---|---|
+| sqlglot | 46/50 | 21 |
+| networkx | 16/21 | 8 |
+| sympy | 11/14 (0/14 before declaring `hypothesis`) | 7 |
+| pyparsing | 8/9 | 0 |
+| tomlkit | 20/20 | 15 |
+| xarray (dropped) | 1/12 | |
+| Python-Markdown (dropped) | 2/9 | |
+
+**Surprises:**
+1. **My first export did not match the dev hunk-header convention.**
+   - Dev patches use git's Python diff driver (hunk headers `def …`). Mine used the default driver (`class …`).
+   - The scorer takes required tests from those headers when a test patch adds no new test function. So my first tasks
+     had weaker verification, and 29 of 48 probe-ineligible tasks failed only on "no required test name".
+   - Fixed. Re-mined patches are identical apart from the headers, and all 81 tasks stay valid under the stricter
+     required tests.
+2. **The released embeddings have one near-constant dimension** (≈ 3.37 in dimension 199), so `search_similar_code`
+   scores ≈ 0.999 for all top hits. A linear map into that space lowers neighbour agreement.
+3. **The harness's graph tools stall on large graphs.**
+   - swegemma's embedding cache is an LRU of 50,000 entries, filled with node ids and texts. Above ~25k nodes the ids
+     are evicted, and `get_graph` degrades to an O(N²) lookup.
+   - Measured: 1.2 s for 8.1k nodes vs > 5 min, unfinished, for sympy's 39.5k. Dev graphs (≤ 4.3k) are unaffected.
+   - sympy's AST also hit Python's recursion limit in codegraph-loc; the limit is raised in `graph_build`.
+4. **Two dry-run failures were environment problems,** not notebook bugs:
+   - missing `google.cloud` in my local venv (the Kaggle image has it);
+   - missing `pytest`.
+
+   D0 now installs pytest and pytest-timeout if missing.
+
+*Round 1 (2026-10-31) follows unchanged.*
+
 ## 1. Bottom line
 - **It works and it is cheap.** From two new repos, **22 of 26 built tasks are valid**. Valid means the competition harness's
   own verification code fails them without a fix and passes them with the gold fix. Docker and the Kaggle-style subprocess

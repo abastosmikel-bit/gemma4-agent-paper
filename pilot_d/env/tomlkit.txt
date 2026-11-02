@@ -1,0 +1,1 @@
+# python-poetry/tomlkit: no test-only dependencies (tests/toml-test is a git submodule, absent from snapshots)

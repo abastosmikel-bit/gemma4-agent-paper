@@ -40,14 +40,18 @@ def main():
     by = collections.defaultdict(collections.Counter)
     for v in val.values():
         by[v["repo"]][reason(v)] += 1
+    tasks = {json.loads(l)["instance_id"]: json.loads(l) for l in open(E / "tasks.jsonl")}
     pool = []
     for i, m in meta.items():
-        v = val[i]
-        pool.append({"instance_id": i, "repo": v["repo"], "probe_ready": i in ok,
+        v, t = val[i], tasks[i]
+        g = E / "graphs" / f"{t['repo'].split('/')[1]}_{t['base_commit']}.json"
+        n_nodes = len(json.load(open(g))["nodes"]) if g.exists() else None
+        pool.append({"instance_id": i, "repo": v["repo"], "probe_ready": i in ok, "graph_nodes": n_nodes,
                      "issue_linked_local": bool(m["issue_refs"]), "hang_bug": v.get("base_exit") == 124,
                      "n_f2p": len(m["FAIL_TO_PASS"]), "gold_nodes": len(m["gold_nodes"]),
                      "repro_verified": (m.get("repro_test") or {}).get("verified")})
-    usable = [r for r in pool if r["probe_ready"] and r["issue_linked_local"] and not r["hang_bug"]]
+    usable = [r for r in pool if r["probe_ready"] and r["issue_linked_local"] and not r["hang_bug"]
+              and (r["graph_nodes"] or 0) <= 20000]
     out = {
         "what": "local subprocess-sandbox validation of the held-out pool (host env = harness deps + declared test deps); "
                 "probe readiness from pilot C's own build_gold/eligible/build_probe_record, unmodified",
@@ -57,8 +61,9 @@ def main():
         "probe_ready": sum(r["probe_ready"] for r in pool),
         "probe_ready_by_repo": dict(collections.Counter(r["repo"] for r in pool if r["probe_ready"])),
         "usable_for_D1_D2_now": {"n": len(usable), "by_repo": dict(collections.Counter(r["repo"] for r in usable)),
-                                 "rule": "probe-ready + issue reference found in git + no 300 s hang; the GitHub API "
-                                         "step in D0 can only add issue links"},
+                                 "rule": "probe-ready + issue reference found in git + no 300 s hang + graph <= 20,000 nodes "
+                                         "(harness O(N^2) graph load above ~25k); the GitHub API step in D0 can only "
+                                         "add issue links"},
         "repro_verified_of_exported": sum(1 for r in pool if r["repro_verified"]),
         "prompt_parity": json.load(open(a.parity))["aggregate"] if a.parity else None,
         "tasks": sorted(pool, key=lambda r: r["instance_id"]),

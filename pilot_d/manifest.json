@@ -245,6 +245,60 @@
     "pyparsing_73a8b553fb": "73a8b553fb5fc50b3cb2e4b5b2b8652f8d997a29",
     "pyparsing_621": "0a2d906a3e6b9a30b6a0701588caec3937ff271f"
    }
+  },
+  {
+   "short": "tomlkit",
+   "repo": "python-poetry/tomlkit",
+   "url": "https://github.com/python-poetry/tomlkit",
+   "pkg": "tomlkit",
+   "licence": "MIT",
+   "instance_ids": [
+    "tomlkit_565",
+    "tomlkit_642",
+    "tomlkit_599",
+    "tomlkit_641",
+    "tomlkit_610",
+    "tomlkit_620",
+    "tomlkit_600",
+    "tomlkit_550",
+    "tomlkit_551",
+    "tomlkit_549",
+    "tomlkit_545",
+    "tomlkit_533",
+    "tomlkit_530",
+    "tomlkit_532",
+    "tomlkit_526",
+    "tomlkit_498",
+    "tomlkit_500",
+    "tomlkit_499",
+    "tomlkit_486",
+    "tomlkit_477"
+   ],
+   "fix_commits": {
+    "tomlkit_565": "229ee8660872df482a56c93c83b14ac98fedf864",
+    "tomlkit_642": "c07c0c15c49a893bb8a4c9f63401822d31e08942",
+    "tomlkit_599": "8c30fc17d91aee7469c0287e509300e78aa15227",
+    "tomlkit_641": "01b0f45cd43ca6d250e733b2db3a2ac84426c055",
+    "tomlkit_610": "f466807e253b7479a3dbd9621f8b0782384ade9e",
+    "tomlkit_620": "49d6efa980fedb321f16371a4b05abd2a449f775",
+    "tomlkit_600": "4b38becd75405e0f38ef3e47e9839eb407591c8a",
+    "tomlkit_550": "495a42ecc9119eaaeb895def0fd025a71cd1cf60",
+    "tomlkit_551": "8cd44f58b499da3c80a29bc877a512665a15e0bb",
+    "tomlkit_549": "67d3e86502706df2a9ed67114ab67e25bcdcbbb7",
+    "tomlkit_545": "e23a25438c6cc9b8cc28b6dcf76dc52f9c7a33e3",
+    "tomlkit_533": "43668ddebc3f082bf385d328aceed18d26976897",
+    "tomlkit_530": "d3c76f0bbe90af4b12a3b83bd8e59bc9061dfe85",
+    "tomlkit_532": "11e22aefccd8069a90ae75d20613b9b1068754a1",
+    "tomlkit_526": "ee4eedbacc8eb72872af050996c7396ecce190b9",
+    "tomlkit_498": "de68fd06eef61aab0d50d69fb589a43f00a046bf",
+    "tomlkit_500": "a076a6afbe035694bd6b1cfdbd8ad7284e93b862",
+    "tomlkit_499": "f8ce14b39c3bfe57f20f75fbc29cb9e5586811e7",
+    "tomlkit_486": "568739658e92b2836c4ead6dc029482f76bbfee8",
+    "tomlkit_477": "1d499870617c8e55b9322f99a2d64a7670f3b929"
+   }
   }
- ]
+ ],
+ "d1_d2_exclusions": {
+  "sympy/sympy": "graph > 20,000 nodes: harness get_graph is O(N^2) above ~25k nodes (embedding LRU of 50,000); stays in the export and the claim-5 audit"
+ }
 }

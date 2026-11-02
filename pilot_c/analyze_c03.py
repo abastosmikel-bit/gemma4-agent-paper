@@ -500,6 +500,7 @@ def _legend(fig, sizes):
 def figures(D: Data, A: dict, outdir: Path, stem: str = "C03") -> list[str]:
     import matplotlib
     matplotlib.use("Agg")
+    matplotlib.rcParams["svg.hashsalt"] = "pilot-c"   # deterministic SVG ids, so reruns reproduce the committed files
     import matplotlib.pyplot as plt
     outdir.mkdir(parents=True, exist_ok=True)
     d1, made = A["depth1"], []
@@ -520,7 +521,7 @@ def figures(D: Data, A: dict, outdir: Path, stem: str = "C03") -> list[str]:
     fig.tight_layout(rect=(0, 0, 1, 0.955))
     for ext in ("png", "svg"):
         p = outdir / f"{stem}_fig1_depth1_deltas.{ext}"
-        fig.savefig(p, dpi=200, facecolor=SURF)
+        fig.savefig(p, dpi=200, facecolor=SURF, metadata={"Date": None} if ext == "svg" else None)
         made.append(p.name)
     plt.close(fig)
 
@@ -543,7 +544,7 @@ def figures(D: Data, A: dict, outdir: Path, stem: str = "C03") -> list[str]:
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     for ext in ("png", "svg"):
         p = outdir / f"{stem}_fig2_depth2_use_edit.{ext}"
-        fig.savefig(p, dpi=200, facecolor=SURF)
+        fig.savefig(p, dpi=200, facecolor=SURF, metadata={"Date": None} if ext == "svg" else None)
         made.append(p.name)
     plt.close(fig)
 
@@ -564,7 +565,7 @@ def figures(D: Data, A: dict, outdir: Path, stem: str = "C03") -> list[str]:
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     for ext in ("png", "svg"):
         p = outdir / f"{stem}_fig3_graph_vs_text.{ext}"
-        fig.savefig(p, dpi=200, facecolor=SURF)
+        fig.savefig(p, dpi=200, facecolor=SURF, metadata={"Date": None} if ext == "svg" else None)
         made.append(p.name)
     plt.close(fig)
     return made

@@ -4685,11 +4685,11 @@
   }
  },
  "figures": [
-  "results/figures/C03_fig1_depth1_deltas.png",
-  "results/figures/C03_fig1_depth1_deltas.svg",
-  "results/figures/C03_fig2_depth2_use_edit.png",
-  "results/figures/C03_fig2_depth2_use_edit.svg",
-  "results/figures/C03_fig3_graph_vs_text.png",
-  "results/figures/C03_fig3_graph_vs_text.svg"
+  "C03_fig1_depth1_deltas.png",
+  "C03_fig1_depth1_deltas.svg",
+  "C03_fig2_depth2_use_edit.png",
+  "C03_fig2_depth2_use_edit.svg",
+  "C03_fig3_graph_vs_text.png",
+  "C03_fig3_graph_vs_text.svg"
  ]
 }

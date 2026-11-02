@@ -219,10 +219,11 @@ def write_task_copy(task_ids: list[str], gold: dict[str, dict], condition: str) 
 
 # --------------------------------------------------------------------------- agent & server
 
-def prepare_agent_dir(model: str, budget: dict[str, Any]) -> Path:
+def prepare_agent_dir(model: str, budget: dict[str, Any], sampling_overrides: dict[str, Any] | None = None) -> Path:
     """Official sample_submission with the model alias swapped and the sample's dummy LoRA
     adapters removed for EVERY size (starter logic for non-31B; for 31B too, so all sizes run the
-    plain base model), and eval_config.yaml replaced by the pilot budget."""
+    plain base model), and eval_config.yaml replaced by the pilot budget. `sampling_overrides` changes keys of
+    configs/sampling.yaml (shared by the agent and its code_analyzer sub-agent), e.g. {'max_output_tokens': 8192}."""
     assert model in ALLOWED, model
     src = data_dir() / "sample_submission"
     dst = WORK / f"agent_{SHORT[model]}"
@@ -238,6 +239,12 @@ def prepare_agent_dir(model: str, budget: dict[str, Any]) -> Path:
             y.write_text(txt, encoding="utf-8")
     lines = ["evaluation:"] + [f"  {k}: {v}" for k, v in budget.items()]
     (dst / "eval_config.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if sampling_overrides:
+        import yaml
+        sp = dst / "configs" / "sampling.yaml"
+        samp = yaml.safe_load(sp.read_text(encoding="utf-8")) or {}
+        samp.update(sampling_overrides)
+        sp.write_text(yaml.safe_dump(samp, sort_keys=False), encoding="utf-8")
     return dst
 
 
@@ -554,6 +561,13 @@ def compaction_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "requests_after_compaction_with_task_prompt": sum(r.get("cmp_after_with_task_prompt") or 0 for r in fired),
         "requests_after_compaction": sum(r.get("cmp_requests_after_first_compaction") or 0 for r in fired),
         "marker_survival_mean": round(sum(surv) / len(surv), 4) if surv else None,
+        "after_marker_in_prompt": sum(r.get("cmp_after_marker_in_prompt") or 0 for r in fired),
+        "after_marker_in_summary_only": sum(r.get("cmp_after_marker_in_summary_only") or 0 for r in fired),
+        "after_marker_other_only": sum(r.get("cmp_after_marker_other_only") or 0 for r in fired),
+        "after_with_original_prompt": sum(r.get("cmp_after_with_original_prompt") or 0 for r in fired),
+        "summaries": sum(r.get("cmp_summaries") or 0 for r in rows),
+        "summaries_with_marker": sum(r.get("cmp_summaries_with_marker") or 0 for r in rows),
+        "context_errors": sum(r.get("cmp_context_errors") or 0 for r in rows),
         "trace_compaction_entries_total": sum(r.get("trace_compaction_entries") or 0 for r in rows),
         "markers": "per task: hint header, gold file path(s), gold function short names",
     }
@@ -583,13 +597,14 @@ def run_condition(agent_dir: Path, models, adapters, task_ids: list[str], gold: 
     res = run_sync(Evaluator(cfg).run)
     batch = time.perf_counter() - t0
     rows = collect_rows(res.task_results, rdir, gold)
+    n_summaries = rp.dump_summaries(rdir / "summaries.jsonl")   # summary TEXT: private, never committed
     agg = aggregate(rows)
     agg["compaction"] = compaction_summary(rows)
     print(f"[{model_short} {condition} r{replicate}] resolved {agg['resolved']}/{agg['n_tasks']} "
           f"batch {batch/60:.1f} min, mean wall {agg['wall_s_mean']}s, calls {agg['tool_calls_mean']}, "
           f"compactions {agg['compaction']['compactions_total']} (in trace: {agg['compaction']['trace_compaction_entries_total']})")
     return {"model": model_short, "condition": condition, "replicate": replicate, "concurrency": concurrency,
-            "batch_wall_s": round(batch, 1), "aggregate": agg, "rows": rows}
+            "batch_wall_s": round(batch, 1), "summaries_saved": n_summaries, "aggregate": agg, "rows": rows}
 
 
 def save_summary(path: Path, summary: dict[str, Any]) -> None:

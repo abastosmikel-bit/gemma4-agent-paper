@@ -72,6 +72,28 @@ elif key == "C04":
     }
     ok = all(checks.values())
     msg = ", ".join(f"{k}: {'ok' if v else 'FAILED'}" for k, v in checks.items()) + f" | d1 ok {len(split)}, d2 ok {len(by(d['d2']))}"
+elif key == "C06":
+    import glob, os
+    rows = [x for r in d["runs"] for x in r["rows"]]
+    A = json.load(open("/kaggle/working/C06_analysis.json")) if os.path.exists("/kaggle/working/C06_analysis.json") else {}
+    checks = {
+        "4 runs, 2 stages": len(d["runs"]) == 4 and len(d["stages"]) == 2,
+        "agent config has 8192": (d.get("agent") or {}).get("sampling", {}).get("max_output_tokens") == 8192
+                                 and d.get("sampling_overrides") == {"max_output_tokens": 8192},
+        "every request asked for 8192": rows and all(x.get("cmp_requested_output_tokens") == [8192] for x in rows if x.get("tool_calls")),
+        "marker traced to summary": sum(x.get("cmp_after_marker_in_summary_only") or 0 for x in rows) > 0,
+        "no marker from the original prompt after compaction": sum(x.get("cmp_after_marker_in_prompt") or 0 for x in rows) == 0,
+        "summary retention recorded": any(x.get("cmp_summary_ngram5_recall_mean") is not None for x in rows),
+        "context crash classified": any("ContextWindowExceeded" in (x.get("error") or "") for x in rows)
+                                    and sum(x.get("cmp_context_errors") or 0 for x in rows) > 0,
+        "summaries saved privately": sum(r.get("summaries_saved") or 0 for r in d["runs"]) > 0
+                                     and bool(glob.glob("/kaggle/working/private/runs/12b/*/summaries.jsonl")),
+        "analysis cell outputs": bool(A) and A["setting_check"]["ok"] and len(A.get("figures", [])) == 3
+                                 and os.path.exists("/kaggle/working/C06_tables.md"),
+        "summary numbers from private files": A.get("A5_summary_retention", {}).get("O0", {}).get("source") == "summaries",
+    }
+    ok = all(checks.values())
+    msg = ", ".join(f"{k}: {'ok' if v else 'FAILED'}" for k, v in checks.items())
 elif key in ("C05", "C05S"):
     runs, st = d["runs"], d["stages"]
     good = runs and all(r["aggregate"]["tool_calls_mean"] > 0 and r["aggregate"]["errors"] == 0 for r in runs)
@@ -126,6 +148,10 @@ PY
          PILOT_C05_STAGE1_N=2 PILOT_C05_MIN_DISCORDANT=$MIND PILOT_MIN_TASKS=2 PILOT_MOCK_LLM=1 PILOT_REPO=$REPO \
            "$PM" "$NB/C05_validation_12b__L4x4.ipynb" "$OUT/${nb}_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
          cp /kaggle/working/C05_validation_12b.json "$OUT/${nb}_C05_validation_12b.json"; check_content $nb "$OUT/${nb}_C05_validation_12b.json" ;;
+    C06) PILOT_C05_STAGE1_N=2 PILOT_C05_MIN_DISCORDANT=0 PILOT_MIN_TASKS=2 MOCK_SUMMARY_ECHO=1 MOCK_CWE_AT_STEP=3 \
+           PILOT_MOCK_LLM=1 PILOT_REPO=$REPO "$PM" "$NB/C06_validation_fix_12b__L4x4.ipynb" "$OUT/C06_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
+         cp /kaggle/working/C06_validation_fix_12b.json /kaggle/working/C06_analysis.json /kaggle/working/C06_tables.md "$OUT/"
+         check_content C06 "$OUT/C06_validation_fix_12b.json" ;;
     C03v) "$PM" "$NB/C03v_test_verify__CPU.ipynb" "$OUT/C03v_out.ipynb" -k python3 --cwd /tmp --log-level ERROR
          cp /kaggle/working/C03v_test_verify.json "$OUT/"; check_content C03v "$OUT/C03v_test_verify.json" ;;
     NEG313) V13=${NEG313_VENV:?set NEG313_VENV to a Python 3.13 venv with papermill}
@@ -179,7 +205,7 @@ print(f"{key} freeze test:", "OK" if ok else "FAILED", f"| freezes={len(fr)} res
 sys.exit(0 if ok else 1)
 PY
          ;;
-    *) echo "unknown notebook key $nb (use C00 C01 C03 C04 C05 C05S C03v NEG313 C03X C01F C03F C04F C05F)"; exit 2 ;;
+    *) echo "unknown notebook key $nb (use C00 C01 C03 C04 C05 C05S C06 C03v NEG313 C03X C01F C03F C04F C05F)"; exit 2 ;;
   esac
   echo "papermill OK: $nb"
 done

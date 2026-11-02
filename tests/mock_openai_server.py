@@ -138,13 +138,31 @@ class _Handler(BaseHTTPRequestHandler):
         first_user = next((_text(m) for m in msgs if m.get("role") == "user"), "")
         if not tools:  # ADK summarizer (compaction) request
             _Handler.log.append({"conv": conv, "summarizer": True, "n_msgs": len(msgs)})
+            text = f"[conv={conv}] Summary: the agent read files and tried an edit."
+            if os.environ.get("MOCK_SUMMARY_ECHO"):  # like a summarizer that re-states the task under its header
+                hist = " ".join(_text(m) for m in msgs)
+                k = hist.find("Problem Statement:")
+                if k >= 0:
+                    text += " " + hist[k:k + 300]
             return self._send({"id": "chatcmpl-x", "object": "chat.completion", "created": int(time.time()), "model": "mock",
-                               "choices": [{"index": 0, "message": {"role": "assistant", "content": f"[conv={conv}] Summary: the agent read files and tried an edit."},
+                               "choices": [{"index": 0, "message": {"role": "assistant", "content": text},
                                             "finish_reason": "stop"}],
                                "usage": {"prompt_tokens": 500, "completion_tokens": 20, "total_tokens": 520}})
         with _Handler.lock:
             step = _Handler.steps.get(conv, 0)
             _Handler.steps[conv] = step + 1
+        cwe_at = int(os.environ.get("MOCK_CWE_AT_STEP", "0") or 0)
+        if cwe_at and step >= cwe_at and int(conv, 16) % 3 == 0:  # vLLM's context-length rejection for 1 in 3 conversations
+            body = json.dumps({"object": "error", "type": "BadRequestError", "code": 400, "param": "input_tokens",
+                               "message": "This model's maximum context length is 32768 tokens. However, you requested "
+                                          "8192 output tokens and your prompt contains 25000 input tokens, for a total of "
+                                          "33192 tokens (25000 + 8192 = 33192 > 32768)."}).encode()
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         _Handler.log.append({"conv": conv, "step": step, "n_msgs": len(msgs), "stream": bool(req.get("stream")),
                              "has_hint": "## Location hints" in first_user,
                              "n_tool_msgs": sum(1 for m in msgs if m.get("role") == "tool"),

@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ["common/__init__.py", "common/diffs.py", "common/locate.py", "common/tasks.py", "common/trace.py",
               "common/metrics.py", "common/runtime_probes.py", "common/server_watchdog.py", "pilot_c/__init__.py", "pilot_c/hints.py", "pilot_c/select_tasks.py", "pilot_c/kaggle_runner.py", "pilot_c/task_ids.json",
-              "pilot_c/probe.py", "pilot_c/capture_server.py", "pilot_c/probe_runner.py"]
+              "pilot_c/probe.py", "pilot_c/capture_server.py", "pilot_c/probe_runner.py", "pilot_c/analyze_c06.py"]
 
 
 COMPETITION = "competition `gemma-4-developer-agent`"
@@ -112,6 +112,19 @@ SPECS = {
                     "(adapters removed, 40 calls / 15 min, concurrency 5) runs the 30 probe tasks with no hint (O0) and with "
                     "file + function + test names (O-all), 1 seed each, first on 15 tasks; it stops there if fewer than 2 "
                     "tasks change outcome. Records resolved per task (scorer rule: non-empty patch) and the common metrics."},
+    "C06": {"file": "C06_validation_fix_12b__L4x4.ipynb", "accelerator": "GPU L4 x4", "internet": "Off",
+            "inputs": [COMPETITION, WHEELHOUSE, "model `google/gemma-4` → Other → `gemma-4-12b-it-qat-w4a16-ct` (version 2; the other three that come with the starter copy are unused)"],
+            "upstream": "C03", "upstream_file": "C03_probe.json (the 30 probe tasks, in order)",
+            "time": "≈ 2.4 L4x4 h (range 2.0–2.6; ≈ 1.2 h if the sequential rule stops it after 15 tasks; hard stop 2.9 h)",
+            "output": "C06_validation_fix_12b.json",
+            "extra_output": "C06_analysis.json, C06_tables.md and C06_fig1_how_runs_ended.png, C06_fig2_hint_effect.png, C06_fig3_summary_retention.png (written by the notebook's last cell; numbers only)",
+            "what": "The 12b validation of `notebooks/C05_validation_12b__L4x4.ipynb` rerun with one change: the agent requests at most "
+                    "8,192 output tokens instead of 16,384, so the prompt can grow to 24,576 tokens before vLLM rejects it "
+                    "(pre-registered: docs/PLAN_C06_validation_fix.md). Same 30 tasks, O0 and O-all, concurrency 5, same "
+                    "stop rule. It also records, for every request after a compaction, whether the task-prompt marker comes "
+                    "from the original prompt or from the summary, and how much of the task statement each summary keeps "
+                    "(summary text stays in private/). The last cell runs the frozen analysis (pilot_c/analyze_c06.py) and "
+                    "writes the tables and figures."},
     "C03v": {"file": "C03v_test_verify__CPU.ipynb", "accelerator": "None (CPU)", "internet": "Off",
              "inputs": [COMPETITION, WHEELHOUSE], "upstream": "C03",
              "upstream_file": "private/probe_records.jsonl + private/probe_samples_*.jsonl",
@@ -183,9 +196,10 @@ def readme() -> str:
             "of `notebooks/C03_probe__L4x4.ipynb`; they are independent of each other. "
             "`notebooks/C03v_test_verify__CPU.ipynb` (CPU) runs last so it can verify the edits of both C03 and C04.", "",
             "**Status:** done on Kaggle: `notebooks/C00_gold_check__CPU.ipynb` and `notebooks/C01_smoke_timing__L4x4.ipynb` "
-            "(2026-10-31), `notebooks/C03_probe__L4x4.ipynb` (2026-11-01). Next: `notebooks/C04_probe_followup__L4x4.ipynb` and "
-            "`notebooks/C05_validation_12b__L4x4.ipynb` (GPU; each needs the coordinator's OK on its estimate), then "
-            "`notebooks/C03v_test_verify__CPU.ipynb`.", "",
+            "(2026-10-31), `notebooks/C03_probe__L4x4.ipynb` and `notebooks/C05_validation_12b__L4x4.ipynb` (2026-11-01). "
+            "Next: `notebooks/C06_validation_fix_12b__L4x4.ipynb`, then `notebooks/C04_probe_followup__L4x4.ipynb` (GPU; each "
+            "needs the coordinator's OK on its estimate), then `notebooks/C03v_test_verify__CPU.ipynb`. "
+            "`notebooks/C06_validation_fix_12b__L4x4.ipynb` needs only C03's output, like C05.", "",
             "When a notebook finishes, download the output file named in the table and commit it to `results/`.", "",
             "Every notebook is dry-run locally with papermill (the executor Kaggle uses) before hand-off, under Python 3.12 "
             "and with the real wheel install from the full wheelhouse: "
@@ -205,10 +219,13 @@ def code(src: str) -> dict:
             "source": src.strip("\n").splitlines(keepends=True)}
 
 
-def code_cells() -> list[dict]:
+def code_cells(extra: tuple[str, ...] = ()) -> list[dict]:
+    """Environment check, then every repo file the notebook needs, inlined as %%writefile cells. `extra`: committed
+    result files (numbers only) a notebook's analysis needs, e.g. results/C05_validation_12b.json."""
     cells = [code(ENV_CHECK), code("import os\nos.makedirs('/kaggle/working/pilot/common', exist_ok=True)\n"
-                  "os.makedirs('/kaggle/working/pilot/pilot_c', exist_ok=True)")]
-    for rel in CODE_FILES:
+                  "os.makedirs('/kaggle/working/pilot/pilot_c', exist_ok=True)\n"
+                  "os.makedirs('/kaggle/working/pilot/results', exist_ok=True)")]
+    for rel in list(CODE_FILES) + list(extra):
         p = ROOT / rel
         body = p.read_text(encoding="utf-8") if p.exists() else ""
         if not body.strip():
@@ -730,6 +747,47 @@ def probe_verify_nb() -> tuple[dict, str]:
     return _nb(cells), SPECS["C03v"]["file"]
 
 
+C06_CONFIG = (VALIDATION_CONFIG
+              .replace("pre-registered in docs/PLAN_C05_validation.md", "pre-registered in docs/PLAN_C06_validation_fix.md")
+              .replace("SEC_PER_TASK = 465                            # 12b mean wall time per task in notebooks/C01_smoke_timing__L4x4.ipynb",
+                       "SEC_PER_TASK = 575                            # 12b mean wall time of C05's runs that did not crash")
+              .replace("MAX_SESSION_HOURS = 2.5", "MAX_SESSION_HOURS = 2.9")
+              + "SAMPLING_OVERRIDES = {'max_output_tokens': 8192}   # THE change vs C05: prompt limit 32768 - 8192 = 24576 tokens\n")
+assert C06_CONFIG.count("PLAN_C06") == 1 and "SEC_PER_TASK = 575" in C06_CONFIG and "MAX_SESSION_HOURS = 2.9" in C06_CONFIG
+
+C06_LOOP = (VALIDATION_LOOP
+            .replace("/kaggle/working/C05_validation_12b.json", "/kaggle/working/C06_validation_fix_12b.json")
+            .replace("'notebooks/C05_validation_12b__L4x4.ipynb', 'plan': 'docs/PLAN_C05_validation.md',",
+                     "'notebooks/C06_validation_fix_12b__L4x4.ipynb', 'plan': 'docs/PLAN_C06_validation_fix.md', "
+                     "'sampling_overrides': SAMPLING_OVERRIDES,")
+            .replace("agent_dir = kr.prepare_agent_dir(MODEL, BUDGET)", "agent_dir = kr.prepare_agent_dir(MODEL, BUDGET, SAMPLING_OVERRIDES)"))
+assert "C06_validation_fix_12b.json" in C06_LOOP and "SAMPLING_OVERRIDES)" in C06_LOOP and "'sampling_overrides'" in C06_LOOP
+
+C06_ANALYSIS = """
+# ---- standalone analysis: docs/PLAN_C06_validation_fix.md §6, code pilot_c/analyze_c06.py (frozen before this run).
+# Numbers only. Inputs: this session's output, C05's committed results and the 12b probe predictors (both inlined above),
+# and the summaries under private/ (only numbers are extracted from them).
+from pilot_c import analyze_c06 as a6
+A = a6.main('/kaggle/working/C06_validation_fix_12b.json', '/kaggle/working/pilot/results/C05_validation_12b.json',
+            '/kaggle/working/pilot/results/C06_predictors_12b.json', '/kaggle/working',
+            '/kaggle/working/private/runs/12b/*/summaries.jsonl')
+print('figures:', A['figures'], '| setting check:', A['setting_check'])
+"""
+
+
+def validation_fix_nb() -> tuple[dict, str]:
+    cells = [first_cell("C06")]
+    cells += code_cells(extra=("results/C05_validation_12b.json", "results/C06_predictors_12b.json"))
+    cells.append(code(PRECHECK_03.replace("{extra}", "")))
+    cells.append(code(SETUP.format(gpu="True", only="None")))
+    cells.append(code(C06_CONFIG))
+    cells.append(code(C06_LOOP))
+    cells.append(code(C06_ANALYSIS))
+    cells.append(md(RESULTS_NOTE.format(out=SPECS["C06"]["output"]).replace(
+        "and commit it", "plus `C06_analysis.json`, `C06_tables.md` and the three `C06_fig*.png`, and commit them")))
+    return _nb(cells), SPECS["C06"]["file"]
+
+
 def followup_nb() -> tuple[dict, str]:
     cells = [first_cell("C04")]
     cells += code_cells()
@@ -761,7 +819,7 @@ def _nb(cells: list[dict]) -> dict:
 
 def main() -> None:
     out = ROOT / "notebooks"
-    for build in (gold_check_nb, smoke_nb, probe_nb, followup_nb, validation_nb, probe_verify_nb):
+    for build in (gold_check_nb, smoke_nb, probe_nb, followup_nb, validation_nb, validation_fix_nb, probe_verify_nb):
         nb, fname = build()
         src = "".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%"))
         for i, c in enumerate(nb["cells"]):  # every generated code cell must at least parse

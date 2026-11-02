@@ -1,0 +1,116 @@
+{
+ "source": "results/C03_probe.json (12b depth-1 design cells, rep 1); built by pilot_c.analyze_c06.build_predictors",
+ "tasks": {
+  "fastapi_11194": {
+   "d_use_L3_L0": -9.8068,
+   "d_find_L2_L0": 46.8125
+  },
+  "fastapi_13537": {
+   "d_use_L3_L0": -4.3881,
+   "d_find_L2_L0": 46.1377
+  },
+  "fastapi_13920": {
+   "d_use_L3_L0": -0.7962,
+   "d_find_L2_L0": 31.0473
+  },
+  "fastapi_14258": {
+   "d_use_L3_L0": 36.5464,
+   "d_find_L2_L0": 26.654
+  },
+  "fastapi_14301": {
+   "d_use_L3_L0": 1.6563,
+   "d_find_L2_L0": 15.0169
+  },
+  "fastapi_14463": {
+   "d_use_L3_L0": -1.1635,
+   "d_find_L2_L0": 13.7234
+  },
+  "fastapi_14616": {
+   "d_use_L3_L0": 1.5877,
+   "d_find_L2_L0": 46.9586
+  },
+  "fastapi_14794": {
+   "d_use_L3_L0": 0.0685,
+   "d_find_L2_L0": 21.1905
+  },
+  "fastapi_15588": {
+   "d_find_L2_L0": 16.2189
+  },
+  "fastapi_15589": {
+   "d_use_L3_L0": -1.2818,
+   "d_find_L2_L0": 39.1547
+  },
+  "fastapi_5077": {
+   "d_use_L3_L0": -0.7016,
+   "d_find_L2_L0": 7.1509
+  },
+  "fastapi_5624": {
+   "d_use_L3_L0": 2.8994,
+   "d_find_L2_L0": 22.163
+  },
+  "fastapi_9425": {
+   "d_use_L3_L0": 3.0258,
+   "d_find_L2_L0": 33.0342
+  },
+  "fastapi_9753": {
+   "d_use_L3_L0": -0.1525,
+   "d_find_L2_L0": 25.0034
+  },
+  "rich_2725": {
+   "d_use_L3_L0": 5.2397,
+   "d_find_L2_L0": 27.185
+  },
+  "rich_2943": {
+   "d_use_L3_L0": 4.2316,
+   "d_find_L2_L0": 27.5855
+  },
+  "rich_3067": {
+   "d_use_L3_L0": -4.7239,
+   "d_find_L2_L0": 16.9873
+  },
+  "rich_3470": {
+   "d_use_L3_L0": 9.0846,
+   "d_find_L2_L0": 35.6521
+  },
+  "rich_3480": {
+   "d_use_L3_L0": -3.6338,
+   "d_find_L2_L0": 25.5543
+  },
+  "rich_3506": {
+   "d_use_L3_L0": 14.7232,
+   "d_find_L2_L0": 8.3211
+  },
+  "rich_3718": {
+   "d_use_L3_L0": 14.8036,
+   "d_find_L2_L0": 6.4539
+  },
+  "rich_3882": {
+   "d_use_L3_L0": -4.1967,
+   "d_find_L2_L0": 21.4692
+  },
+  "rich_3905": {
+   "d_use_L3_L0": -6.1261,
+   "d_find_L2_L0": 20.2045
+  },
+  "rich_3935": {
+   "d_use_L3_L0": -5.5426,
+   "d_find_L2_L0": 47.5571
+  },
+  "rich_3953": {
+   "d_use_L3_L0": 4.8224,
+   "d_find_L2_L0": 25.8832
+  },
+  "rich_4075": {
+   "d_use_L3_L0": 5.9783,
+   "d_find_L2_L0": 32.0303
+  },
+  "rich_4076": {
+   "d_use_L3_L0": -3.0212,
+   "d_find_L2_L0": 22.395
+  },
+  "rich_4079": {
+   "d_use_L3_L0": -2.3998,
+   "d_find_L2_L0": 22.8242
+  }
+ }
+}

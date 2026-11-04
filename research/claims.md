@@ -7,14 +7,13 @@ Every number in the draft is listed here with where it comes from. Branches/comm
 paper's numbers.
 
 Status: **measured** (single run unless noted) · **exploratory** (not pre-registered) · **community** (someone
-else's measurement, cited) · **PENDING EVIDENCE** (stated in Mikel's run notes; the results file is not in the repo yet,
-so the number must not ship until it is committed and checked) · **verify** (check on Kaggle before submitting).
+else's measurement, cited) · **PENDING EVIDENCE** (no results file yet; none left as of 2026-11-04) · **verify** (check on Kaggle before submitting).
 
 ## Competition facts
 
 | # | Draft says | Source | Status |
 |---|---|---|---|
-| K1 | Public scores around 0.24 | F topic 750496 (S. D. Biswas, 2026-10-18: "teams reaching 0.22–0.24") | **verify** on the live leaderboard |
+| K1 | Best public score 0.29; most leading teams at 0.24 | Public leaderboard screenshot from Mikel, 2026-11-04 (rank 1 0.29; ranks 2–9 0.24) | verified (screenshot); re-check on submit day |
 | K2 | Stronger models +4–5 of 124 tasks | F topic 747168 (R. Zhu, 2026-10-08): Gemma 31B 54/124 & 53/123; DeepSeek V4 Pro 58/124; Qwen3.6-27B 59/123 | community |
 | K3 | 15% of tasks flip between identical passes | same thread: 19/123 | community |
 | K4 | Crash mechanism (16,384 reserve, 14,336 threshold, 2,048 headroom) reported | F 747791 (Ruihuan, 2026-10-09); F 744692 (A. Wright, 2026-09-30: overflow discards the patch) | community; our measurement in M17–M20 |
@@ -54,22 +53,41 @@ so the number must not ship until it is committed and checked) · **verify** (ch
 | M24 | Rescoring noise 0.2–0.6 nats | C `results/C03_probe.json` (P LEARNINGS 2026-11-01); C04 E4 0.16–0.32 | measured |
 | M25 | Plan frozen before any GPU run; held-out criteria before held-out data | P `DECISIONS.md`: 168d115 (2026-10-31), 682a34f (2026-11-02) | fact |
 
-## Held-out (D)
+## Held-out (D) — files on this branch: `results/D1_analysis.json`, `results/D1v_analysis.json`, `results/D2_analysis.json`
 
 | # | Draft says | Evidence | Status |
 |---|---|---|---|
 | H1 | 101/114 held-out tasks valid in the Kaggle image; five repos; fixes merged May–Oct 2026 | C `results/D0b_summary.json`; D `pilot_d/manifest.json` (since 2026-05-01) | measured |
-| H2 | Released-rule graphs match node ids on 7/7 dev graphs | D `results/graph_fidelity_dev.json` | measured locally |
-| H3 | 24 issue-statement tasks from sqlglot, tomlkit, networkx | C `results/D_selection_predicted.json` (predicted 11/8/5); authoritative `D_selection.json` from the D1/D2 run | **PENDING EVIDENCE** for the final list |
-| H4 | All four probe criteria (R1–R4) replicate for all three sizes | expected `results/D1_analysis.json` (`verdicts`) | **PENDING EVIDENCE** |
-| H5 | Held-out probe edits show the dev pattern | expected `results/D1v_analysis.json` | **PENDING EVIDENCE** |
-| H6 | 442 file reads, 346 commands, 16 edits in 24 runs; most runs ended on time or call budget | expected `results/D2_analysis.json` (`tool_mix`, `ended`) | **PENDING EVIDENCE**; also check whether "16 edits" counts `write_file` |
-| H7 | ≤ 1 context crash (R7) and 0 post-compaction requests with the statement (R6) | expected `results/D2_analysis.json` | **PENDING EVIDENCE** |
-| H8 | "Fixed after Gemma 4's release" | D `docs/PRIOR_WORK.md`: family released 2026-03-31; **12B released 2026-06-03**, so some May fixes predate the 12B release; all are after the stated Jan-2025 training cutoff | fact; wording caveat |
+| H2 | Released-rule graphs reproduce node ids on 7/7 dev graphs | D `results/graph_fidelity_dev.json` | measured locally |
+| H3 | 24 issue-statement tasks: sqlglot 11, tomlkit 8, networkx 5 | `D1_analysis.json` selection (seed 20261102, pool 32) | measured |
+| H4 | R1–R4 replicate for all three sizes | `D1_analysis.json` verdicts | measured, single run, pre-registered (682a34f) |
+| H5 | Find L2−L0 +18.0 / +21.2 / +31.5; use L2−L0 +1.7 / +0.4 / −0.5 | `D1_analysis.json` R1 | measured |
+| H6 | Use W−L0 ≈ +22 (22.0 / 22.2 / 22.2); L5−L0 +107 / +125 / +119 (n = 18) | `D1_analysis.json` R2 | measured; W and L5 exist for 18/24 tasks |
+| H7 | Use T−L0 +3.9 / +11.0 / +4.9 ("4–11") | `D1_analysis.json` depth1 | measured; larger than dev (0.4–2.2), reported as such |
+| H8 | Graph at find G-json−G-null +4.3 / +3.9 / +6.5; at use G-null matches or beats G-json | `D1_analysis.json` R3, R4 (use G-json−G-null +0.5 / −4.0 / −1.6) | measured |
+| H9 | Sampled find: E4B reads gold function with hint 24/24; 31B reads gold file first in 1/24 even with hint | `D1_analysis.json` R5 find (e4b/L2 hit_func 1.0; 31b/L2 hit_file 0.042); 12B 54% file / 33% function | measured, 1 sample per task. **Differs from dev (93–97%)**, reported |
+| H10 | 31B edits once in 132 held-out samples (0/48, 0/48, 1/36); first move without hint: write_file 19/48 | `D1_analysis.json` R5 use first_tools | measured |
+| H11 | E4B held-out pass rate 10% / 8% / 56% (L0 / L2 / L5) | `D1v_analysis.json` V | measured (exploratory) |
+| H12 | 442 reads, 346 commands, 16 edit_file + 15 write_file; 5/24 solved; 17/24 ended on time (6) or tool-call (11) budget | `D2_analysis.json` tool_mix, ended | measured, single run |
+| H13 | 1 of 24 runs crashed (R7 holds) | `D2_analysis.json` R7 | measured |
+| H14 | 24/24 compacted, prompt compacted 24/24; 0 of 582 later requests contain the statement; median 5-gram retention 1.1%, words 31% | `D2_analysis.json` R6, summary_retention | measured |
+| H15 | 3 of 16 edits failed, all after compaction (2 never matched) | `D2_analysis.json` failed_edits | measured |
+| H16 | Totals used in the draft: 137 compacted runs (113 dev + 24 held-out); 2,054 checked requests in 82 runs (C06 58 + D2 24) | M21 + H14; C06 A5 (1,472) + D2 (582) | derived |
+| H17 | "Fixed after Gemma 4's release" | family released 2026-03-31; **12B released 2026-06-03**, so a few May fixes predate the 12B release; all are after the stated Jan-2025 training cutoff | fact; wording caveat |
 
 ## Not claimed (kept out on purpose)
 
-- A held-out solve rate (in D2_analysis.json; add if Mikel wants it, with its Wilson CI and "single run").
+- The held-out solve rate is stated (5/24) but not compared with dev: different repos (plan D2 §4).
 - Any claim that the location hint improves solve rate: +4 net, p = 0.29.
 - H2 (words gain grows with size) and H5 were not supported; H4's size trend not supported. Not in the draft for space;
   add one line in Limitations if a reviewer asks for the full scorecard.
+
+## Provenance of the forum credits (checked 2026-11-04)
+
+The paper credits [3]–[7] for priority and says our numbers are our own. It does **not** say we found the posts only
+after our experiments, because the project's own notes show otherwise: Phase 0 (2026-10-21, branch
+`claude/gemma4-agent-research-l7vw8l`, `research/failure-modes.md`, `novelty-map.md`) lists 744692, 747186, 749198 and
+747168; pilot C's REPORT §5/§8.1 (2026-10-31, before the probe was designed) cites 749198 as a "direct competitor"; the
+missing-fastapi-module count was known before C00 (RESULTS row "forum reported 27"). What is true and stated: the crash
+mechanism and the summarizer behaviour were traced in vLLM/ADK source during our own diagnosis (LEARNINGS 2026-10-31,
+2026-11-01; RELATED_WORK §B "searched papers only, not forums"), and every number comes from our runs.

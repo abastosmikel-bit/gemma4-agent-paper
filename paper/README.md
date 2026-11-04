@@ -20,14 +20,13 @@ python paper/wordcount.py
 
 ## Before submitting
 
-1. **Commit the held-out results** to `results/` on this branch: `D1_analysis.json`, `D1v_analysis.json`,
-   `D2_analysis.json`, `D_selection.json` (the analysis outputs of the D1/D1v/D2 notebooks; numbers only). Then rerun
-   `make_figures.py`: held-out values appear as hollow markers in Figs 1–2 and as a fifth bar in Fig. 3.
-2. Replace every `⟦HO⟧` and `⟦TODO⟧` in `draft.md` with numbers from those files, and move the matching rows in
-   `research/claims.md` from PENDING EVIDENCE to measured. Check whether "16 edits" counts `write_file`.
-3. Verify on Kaggle: the leaderboard top (~0.24), the 3,000-word limit and what counts, the deadline. Re-check the
-   forum after 2026-10-21 for anything overlapping the find/use split, the graph control or task erasure.
-4. Rewrite the prose in your voice; then rerun `wordcount.py` (now 2,837 with the placeholders; limit 3,000).
-5. Reviewer round (strict judge on the five criteria), after steps 1–4.
-6. Make the code public (notebooks, `pilot_c/`, `pilot_d/` mining scripts, `repro/context_window/`) without any
+1. Held-out results are in `results/` (D1, D1v, D2 analysis files) and every number in the draft is mapped in
+   `research/claims.md`; no placeholders remain. `D_selection.json` itself is not needed: the selection is inside
+   `D1_analysis.json` and `D2_analysis.json`.
+2. Rewrite the prose in your voice, then rerun `wordcount.py` (2,934 now; limit 3,000). The intro is ~440 words; it is
+   the easiest place to cut, since §4 repeats its numbers.
+3. On submit day: re-check the leaderboard top (0.29 on 2026-11-04) and the forum for anything new on the find/use
+   split, the unrelated-graph control or task erasure.
+4. Reviewer round (strict judge on the five criteria) after your rewrite.
+5. Make the code public (notebooks, `pilot_c/`, `pilot_d/` mining scripts, `repro/context_window/`) without any
    competition data, and link it in the Writeup's Project Links.

@@ -50,6 +50,7 @@ def load_opt(path: Path) -> dict | None:
 
 
 # ---------------------------------------------------------------- Figure 1: where vs what, find vs use (claims 1, 3)
+XMAX = 58
 ROWS = [
     ("Location: file + function", "L2-L0"),
     ("The change, in words", "W-L0"),
@@ -85,20 +86,27 @@ def fig1(dev: dict, held: dict | None, out: Path) -> list[tuple]:
                     c = cell(ref, size, state, key)
                     if not c:
                         continue
-                    yy = y if filled else y - 0.09
+                    yy = y if filled else y - 0.1
                     lo, hi = c["ci"]
-                    ax.plot([lo, hi], [yy, yy], color=COLOR[size], lw=2, solid_capstyle="round")
-                    ax.plot(c["median"], yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6,
-                            mfc=COLOR[size] if filled else SURFACE)
-                    rows.append((src, size, state, key, c["n"], c["median"], lo, hi))
+                    m = c["median"]
+                    ax.plot([lo, min(hi, XMAX)], [yy, yy], color=COLOR[size], lw=2, solid_capstyle="round",
+                            alpha=1 if filled else 0.55)
+                    if m > XMAX:  # off-scale: park the marker at the edge and print the value
+                        ax.plot(XMAX - 1, yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6, mfc=SURFACE)
+                        ax.text(XMAX - 3, yy, f"held-out {m:+.0f} →", ha="right", va="center", fontsize=8, color=INK2,
+                                bbox=dict(facecolor=SURFACE, edgecolor="none", pad=0.6))
+                    else:
+                        ax.plot(m, yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6,
+                                mfc=COLOR[size] if filled else SURFACE)
+                    rows.append((src, size, state, key, c["n"], m, lo, hi))
         ax.set_title(title, loc="left", fontsize=11)
         ax.set_xlabel("gain in log-likelihood of the right next action vs no hint (nats)")
-        ax.set_xlim(-10, 58)
+        ax.set_xlim(-10, XMAX)
     axes[0].set_yticks(range(len(ROWS)))
     axes[0].set_yticklabels([r[0] for r in ROWS][::-1])
     handles = [plt.Line2D([], [], marker=MARKER[s], color=COLOR[s], lw=2, ms=7, label=LABEL[s]) for s in SIZES]
     if held is not None:
-        handles.append(plt.Line2D([], [], marker="o", color=INK2, mfc=SURFACE, lw=0, label="held-out (hollow)"))
+        handles.append(plt.Line2D([], [], marker="o", color=INK2, mfc=SURFACE, lw=0, label="held-out, 24 tasks (hollow)"))
     fig.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False, bbox_to_anchor=(0.55, 1.02))
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     fig.savefig(out, dpi=200)

@@ -23,10 +23,10 @@ python paper/wordcount.py
 1. Held-out results are in `results/` (D1, D1v, D2 analysis files) and every number in the draft is mapped in
    `research/claims.md`; no placeholders remain. `D_selection.json` itself is not needed: the selection is inside
    `D1_analysis.json` and `D2_analysis.json`.
-2. Rewrite the prose in your voice, then rerun `wordcount.py` (2,934 now; limit 3,000). The intro is ~440 words; it is
-   the easiest place to cut, since §4 repeats its numbers.
-3. On submit day: re-check the leaderboard top (0.29 on 2026-11-04) and the forum for anything new on the find/use
-   split, the unrelated-graph control or task erasure.
+2. Rewrite the prose in your voice, then rerun `wordcount.py` (about 2,810 by its rules, about 2,870 by a raw
+   `wc -w` that also counts table pipes; limit 3,000).
+3. On submit day: check the forum for anything new on the find/use split, the unrelated-graph control or task
+   erasure. References were checked on 2026-11-04 (`research/claims.md`, "Reference check").
 4. Reviewer round (strict judge on the five criteria) after your rewrite.
 5. Make the code public (notebooks, `pilot_c/`, `pilot_d/` mining scripts, `repro/context_window/`) without any
    competition data, and link it in the Writeup's Project Links.

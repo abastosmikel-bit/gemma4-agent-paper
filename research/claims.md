@@ -13,12 +13,12 @@ else's measurement, cited) · **PENDING EVIDENCE** (no results file yet; none le
 
 | # | Draft says | Source | Status |
 |---|---|---|---|
-| K1 | Best public score 0.29; most leading teams at 0.24 | Public leaderboard screenshot from Mikel, 2026-11-04 (rank 1 0.29; ranks 2–9 0.24) | verified (screenshot); re-check on submit day |
+| K1 | (removed) Leaderboard figures | Removed from the draft on 2026-11-04 at Mikel's request: public data that can change | — |
 | K2 | Stronger models +4–5 of 124 tasks | F topic 747168 (R. Zhu, 2026-10-08): Gemma 31B 54/124 & 53/123; DeepSeek V4 Pro 58/124; Qwen3.6-27B 59/123 | community |
 | K3 | 15% of tasks flip between identical passes | same thread: 19/123 | community |
 | K4 | Crash mechanism (16,384 reserve, 14,336 threshold, 2,048 headroom) reported | F 747791 (Ruihuan, 2026-10-09); F 744692 (A. Wright, 2026-09-30: overflow discards the patch) | community; our measurement in M17–M20 |
 | K5 | Summarizer keeps only text, drops tool calls/outputs | F 747186 (Whisper Last, 2026-10-08); confirmed in google-adk 1.36.1 `apps/llm_event_summarizer.py` (P LEARNINGS 2026-10-31) | community + code check |
-| K6 | Gold-pass count, missing fastapi test modules and requests/httpx shadowing were reported on the forum before our audit | F 744370 (O. Zhukov, 2026-09-29: 71 gold-pass in the Kaggle image, 42 rich + 29 fastapi; requests/httpx untestable, src layout); F 742882 (yesterdays_rebel, 2026-09-25: installed requests/httpx shadow /workspace, some pass before the gold patch); F 745775 (babycare, 2026-10-04: missing fastapi test deps) | community. Our additions: no-patch check on Kaggle, a reason for all 58 invalid tasks, 6/14 valid with src/ first |
+| K6 | Others had reported the 71 gold passes, the missing test modules, and that requests/httpx could not be tested because of their src layout | Live pages read 2026-11-04: O. Zhukov's comment in 744370 (71 gold passes, 42 rich + 29 fastapi; missing inline_snapshot/dirty_equals; "requests and httpx can't be tested there because of their src layout"); babycare 745775 (missing fastapi test deps); yesterdays_rebel's visible comment in 742882 lists missing test packages. The shadowing text seen in the 2026-10-21 dump of 742882 is **no longer visible** (edited or deleted), so the draft no longer credits shadowing to it | community, verified |
 | K8 | A trace study found agents naming the right file but never editing it; forcing early edits mostly yields wrong edits | F 749198 (kimdonggyu1255, 2026-10-14): 27/71 default-prompt tasks never changed a source file, 23 of them had named a gold file; an edit-by-call-12 prompt cut no-edit tasks 25→7 but solves only 26→30 | community; overlaps our thesis (cited as the observational version) |
 | K9 | Lexical search ranks the gold file first in 30% of tasks | F 747980 (H. Jain, 2026-10-10): top identifier-grep hit is a gold file 30% of the time (128 tasks) | community |
 | K7 | 3,000-word limit, five equal criteria, deadline 2026-11-12 | paper-track pages in the F dump (`gemma-4-developer-agent-paper/pages.md`) | **verify** (Kaggle overrides) |
@@ -91,3 +91,20 @@ after our experiments, because the project's own notes show otherwise: Phase 0 (
 missing-fastapi-module count was known before C00 (RESULTS row "forum reported 27"). What is true and stated: the crash
 mechanism and the summarizer behaviour were traced in vLLM/ADK source during our own diagnosis (LEARNINGS 2026-10-31,
 2026-11-01; RELATED_WORK §B "searched papers only, not forums"), and every number comes from our runs.
+
+## Reference check (2026-11-04)
+
+| Ref | How checked | Result |
+|---|---|---|
+| [1] | competition pages | fine; leaderboard no longer cited |
+| [2] 747168 | live page (headless browser) | author Ruijie Zhu; title "Stronger models barely beat Gemma 4 31B in this harness — teacher comparison on 124 public tasks"; Gemma 31B 54/124 and 53/123, DeepSeek V4 Pro 58/124, Qwen3.6-27B 59/123 (= +4–5) |
+| [3] 749198 | live page, full text read | author kimdonggyu1255, posted 2026-10-14. Method: traces of two practice runs (default prompt, 71 tasks; Budget-Fit config, 112 tasks) that differ in nine ways ("compares footprints, not effects"). Findings: 27/71 default-prompt tasks never changed a source file, 23 of them had named a gold file; edit-by-call-12 prompt cut no-edit tasks 25→7 on 69 shared tasks but solves only 26→30, and most unsolved N1 tasks had an edit in a gold file. Conclusion quoted: "mostly loses tasks by not changing the code it has found, not by failing to find it"; "forcing the change early mostly turns that hesitation into wrong edits". No interventions on information, no model sizes compared. The draft's description (traces of two practice runs; names the file but never edits; edit deadline mostly produces wrong edits) and "ours comes from controlled interventions" are fair |
+| [4] 747791 | live page | author Ruihuan; "Can the harness compact and retry on context-window overflow?" |
+| [5] 744692 | live page | author Avery Wright; "Compaction can't trigger at token_threshold 32,768, and overflow then discards the patch" |
+| [6] 744370 / 742882 / 745775 | live pages | see K6 (thread authors are Vivek K N and shimonDanziger; Zhukov and yesterdays_rebel are commenters, so [6] now says "comment in") |
+| [7] 747186 | live page | author Whisper Last; "Request: let submissions set the compaction summary prompt (ADK already supports it)" |
+| [8]–[10], [13], [16], [17] | arXiv API | titles/authors match: SWE-bench 2310.06770, Agentless 2407.01489, LocAgent 2503.09089, RepoGraph 2410.14684, SWE-agent 2405.15793, Complexity Trap 2508.21433 |
+| [11] 2606.30963 | arXiv API + abstract | "Loc2Repair: A Framework for Evaluating the Impact of File-Level Issue Localization in Repo-Level LLM Repair", M. N. Al Awad, S. Ivanov, 2026-06-29. Pooled resolve 44.7% → 52.4% with gold files on SWE-bench Verified. Draft now states the numbers instead of "only modestly" |
+| [12] 2604.05481 | arXiv API + abstract | "On the Role of Fault Localization Context for LLM-Based Program Repair", M. Sepidband, H. V. Pham, H. Hemmati, 2026-04-07. File-level localization dominant (15–17× over no file); line-level expansion often degrades. Draft now says "file-level context dominates while line-level context often hurts" (was the broader "finer location context does not help") |
+| [14] 742911 / 745731 / 744040 | live pages | Jason Wold "Two data issues: … graphs contain no async functions"; Akhil Chinta "Notes on the graph tools from auditing all 127 graphs"; Tarun Singhal "Embeddings for search_similar_code appear near-collapsed" |
+| [15] codegraph-loc | GitHub search | danielmantiglia/codegraph-loc (created 2026-10-05). It is the generator our held-out graphs are built with (pilot D pins commit 1e8e0ab), so §2 now cites it there too. A different repo with the same name exists (Benadict-Git, 2026-09-26); not the one we used |

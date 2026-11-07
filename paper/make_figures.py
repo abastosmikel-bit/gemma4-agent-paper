@@ -92,15 +92,16 @@ def fig1(dev: dict, held: dict | None, out: Path) -> list[tuple]:
                     ax.plot([lo, min(hi, XMAX)], [yy, yy], color=COLOR[size], lw=2, solid_capstyle="round",
                             alpha=1 if filled else 0.55)
                     if m > XMAX:  # off-scale: park the marker at the edge and print the value
-                        ax.plot(XMAX - 1, yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6, mfc=SURFACE)
-                        ax.text(XMAX - 3, yy, f"held-out {m:+.0f} →", ha="right", va="center", fontsize=8, color=INK2,
-                                bbox=dict(facecolor=SURFACE, edgecolor="none", pad=0.6))
+                        ax.plot(XMAX - 1, yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6, mfc=SURFACE,
+                                clip_on=False)
+                        ax.text(XMAX + 1.5, yy, f"→ {m:+.0f}", ha="left", va="center", fontsize=8.5,
+                                color=COLOR[size], clip_on=False)
                     else:
                         ax.plot(m, yy, MARKER[size], ms=7, mec=COLOR[size], mew=1.6,
                                 mfc=COLOR[size] if filled else SURFACE)
                     rows.append((src, size, state, key, c["n"], m, lo, hi))
         ax.set_title(title, loc="left", fontsize=11)
-        ax.set_xlabel("gain in log-likelihood of the right next action vs no hint (nats)")
+        ax.set_xlabel("gain in log-likelihood of the right next action (nats)")
         ax.set_xlim(-10, XMAX)
     axes[0].set_yticks(range(len(ROWS)))
     axes[0].set_yticklabels([r[0] for r in ROWS][::-1])
@@ -108,7 +109,7 @@ def fig1(dev: dict, held: dict | None, out: Path) -> list[tuple]:
     if held is not None:
         handles.append(plt.Line2D([], [], marker="o", color=INK2, mfc=SURFACE, lw=0, label="held-out, 24 tasks (hollow)"))
     fig.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False, bbox_to_anchor=(0.55, 1.02))
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.tight_layout(rect=(0, 0, 0.97, 0.93))
     fig.savefig(out, dpi=200)
     plt.close(fig)
     return rows
@@ -170,16 +171,16 @@ def fig2(k1: dict, held_v: dict | None, out: Path) -> list[tuple]:
 # ---------------------------------------------------------------- Figure 3: how 12b runs ended
 ENDS = [("resolved", "solved", "#2a78d6", "white"), ("context_crash", "context crash", "#eb6834", INK),
         ("time_budget", "time budget", "#1baf7a", INK), ("tool_call_budget", "tool-call budget", "#eda100", INK),
-        ("unresolved_other", "other failure", "#e87ba4", INK)]
+        ("unresolved_other", "finished, not solved", "#e87ba4", INK)]
 
 
 def fig3(c06: dict, held_d2: dict | None, out: Path) -> list[tuple]:
-    bars = [("no hint, output limit 16,384 (C05)", c06["A1_crashes"]["O0"]["ended_C05"]),
-            ("no hint, output limit 8,192 (C06)", c06["A1_crashes"]["O0"]["ended_C06"]),
-            ("location hint, 16,384 (C05)", c06["A1_crashes"]["O-all"]["ended_C05"]),
-            ("location hint, 8,192 (C06)", c06["A1_crashes"]["O-all"]["ended_C06"])]
+    bars = [("no hint, reserve 16,384 (starter)", c06["A1_crashes"]["O0"]["ended_C05"]),
+            ("no hint, reserve 8,192 (fixed)", c06["A1_crashes"]["O0"]["ended_C06"]),
+            ("location hint, reserve 16,384", c06["A1_crashes"]["O-all"]["ended_C05"]),
+            ("location hint, reserve 8,192", c06["A1_crashes"]["O-all"]["ended_C06"])]
     if held_d2 is not None:
-        bars.append(("held-out, no hint, 8,192 (D2)", held_d2["ended"]))
+        bars.append(("held-out tasks, no hint, 8,192", held_d2["ended"]))
     fig, ax = plt.subplots(figsize=(10, 0.65 * len(bars) + 1.3))
     rows = []
     for i, (name, ended) in enumerate(bars):

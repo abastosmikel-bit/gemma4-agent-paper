@@ -74,7 +74,7 @@ Held-out tasks give the same picture: +18.0, +21.2 and +31.5 nats at find, +1.7,
 One prediction failed. The probe's per-task values did not predict which tasks the hint would rescue in real runs (AUC 0.43, and 0.27 once crashes were removed).
 
 ![Figure 1](figures/fig1_where_vs_what.png)
-*Figure 1. Gain in log-likelihood of the correct next action over no hint (median, 95% CI). Filled: 30 practice tasks; hollow: 24 held-out tasks. Location helps before the code is read, the description of the change after.*
+*Figure 1. Gain in log-likelihood of the correct next action (median, 95% CI): over no hint in the top three rows, right graph minus unrelated graph in the bottom row. Filled: 30 practice tasks; hollow: 24 held-out tasks, with off-scale values printed at the edge. Location helps before the code is read, the description of the change after.*
 
 ### 4.2 What to change matters more, and bigger models hesitate
 
@@ -101,12 +101,12 @@ At find, a graph-tool output around the gold function beats the same kind of out
 **Compaction.** Around the tenth tool call, ADK replaces older history with a summary written by the model. The summarizer only reads text, so tool calls and their outputs are dropped, as another participant also found [7]. In all 137 compacted runs (113 practice, 24 held-out) the task prompt was among the summarized events. In the 82 runs where we checked every later request, none of 2,054 contained the original statement. The median summary kept 0–1% of the statement's five-word phrases and about a third of its words. The agent then edits from memory: once practice runs stopped crashing, failed edits rose from 6 to 33. Of these, 32 tried to replace text that had never been in the file and 31 came after the first compaction. In one run, 11 edits repeated a replacement that had already failed. Held-out runs edited too rarely to say more (3 of 16 edits failed, all after compaction).
 
 ![Figure 3](figures/fig3_runs_ended.png)
-*Figure 3. How 12B runs ended, with the output reserve at 16,384 and at 8,192 tokens. Most of the hint's apparent benefit was avoided crashes.*
+*Figure 3. How 12B runs ended, with the output reserve at 16,384 and at 8,192 tokens (30 practice tasks; 24 held-out). "Finished, not solved": the run ended within budget but its patch failed the tests. Most of the hint's apparent benefit was avoided crashes.*
 
 ## 5 Related work
 
 <!-- DRAFT: user rewrites -->
-Localization is often treated as the bottleneck. Oracle retrieval in SWE-bench [8], hierarchical localization in Agentless [9] and graph-guided agents such as LocAgent [10] all help. Gold files raise resolve rates on SWE-bench Verified from 44.7% to 52.4% [11], and in a fixed repair pipeline file-level context dominates while line-level context often hurts [12]. Closest to our thesis, a participant who read the traces of two practice runs found that the agent often named a file the fix touches but never edited it, and that an edit deadline mostly produced wrong edits [3]. Our probe is consistent with all of these: location matters when the agent looks for code, much less when it changes it. Repository graphs report gains [10, 13], and participants have audited the competition's graphs and embeddings [14] and rebuilt its generator [15]. We add a controlled test of what a graph's content does to the next decision. For context management, SWE-agent keeps the task while trimming old observations [16], and simple masking matches LLM summarization [17]; the summarizer here drops both the task and the tool outputs. Several of our observations appeared first in forum posts [3–7], which we cite for priority; every number in this paper comes from our own runs.
+Localization is often treated as the bottleneck. Oracle retrieval in SWE-bench [8], hierarchical localization in Agentless [9] and graph-guided agents such as LocAgent [10] all help. Gold files raise resolve rates on SWE-bench Verified from 44.7% to 52.4% [11], and in a fixed repair pipeline file-level context dominates while line-level context often hurts [12]. In those pipelines the file is handed to a model that cannot search, so it stands in for the finding step. Closest to our thesis, a participant who read the traces of two practice runs found that the agent often named a file the fix touches but never edited it, and that an edit deadline mostly produced wrong edits [3]. Our probe separates finding from fixing: location matters when the agent looks for code, much less once it has read it. Repository graphs report gains [10, 13], and participants have audited the competition's graphs and embeddings [14] and rebuilt its generator [15]. We add a controlled test of what a graph's content does to the next decision. For context management, SWE-agent keeps the task while trimming old observations [16], and simple masking matches LLM summarization [17]; the summarizer here drops both the task and the tool outputs. Several of our observations appeared first in forum posts [3–7], which we cite for priority; every number in this paper comes from our own runs.
 
 ## 6 Limitations
 
@@ -119,6 +119,8 @@ Each condition is a single run, and full runs are noisy (15% of tasks flip betwe
 Concretely: give the agent a description of the change where one can be had, keep the task statement and the code it has read through compaction (masking old tool outputs instead of summarizing them does this), and set the output reserve so prompts fit. An edit deadline alone mostly produces wrong edits [3]; pushing for edits helps once the agent knows the change.
 
 **Reproducibility.** Notebooks, frozen plans, analysis scripts and the figure script are released with the paper, and held-out tasks are rebuilt from public GitHub by script. No competition data is redistributed.
+
+**AI assistance.** Experiment code and analyses were written with Claude Code; the text was drafted with AI assistance and revised by the author.
 
 ## References
 

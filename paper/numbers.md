@@ -89,28 +89,28 @@ Dev source: pilot/c-bottleneck @ 14e9d00. Held-out files found: D1=True, D1v=Tru
 
 | condition | ending | runs |
 |---|---|---|
-| no hint, output limit 16,384 (C05) | resolved | 6 |
-| no hint, output limit 16,384 (C05) | context_crash | 14 |
-| no hint, output limit 16,384 (C05) | time_budget | 3 |
-| no hint, output limit 16,384 (C05) | tool_call_budget | 4 |
-| no hint, output limit 16,384 (C05) | unresolved_other | 3 |
-| no hint, output limit 8,192 (C06) | resolved | 9 |
-| no hint, output limit 8,192 (C06) | context_crash | 0 |
-| no hint, output limit 8,192 (C06) | time_budget | 9 |
-| no hint, output limit 8,192 (C06) | tool_call_budget | 5 |
-| no hint, output limit 8,192 (C06) | unresolved_other | 7 |
-| location hint, 16,384 (C05) | resolved | 13 |
-| location hint, 16,384 (C05) | context_crash | 9 |
-| location hint, 16,384 (C05) | time_budget | 3 |
-| location hint, 16,384 (C05) | tool_call_budget | 2 |
-| location hint, 16,384 (C05) | unresolved_other | 3 |
-| location hint, 8,192 (C06) | resolved | 13 |
-| location hint, 8,192 (C06) | context_crash | 2 |
-| location hint, 8,192 (C06) | time_budget | 5 |
-| location hint, 8,192 (C06) | tool_call_budget | 7 |
-| location hint, 8,192 (C06) | unresolved_other | 3 |
-| held-out, no hint, 8,192 (D2) | resolved | 5 |
-| held-out, no hint, 8,192 (D2) | context_crash | 1 |
-| held-out, no hint, 8,192 (D2) | time_budget | 6 |
-| held-out, no hint, 8,192 (D2) | tool_call_budget | 11 |
-| held-out, no hint, 8,192 (D2) | unresolved_other | 1 |
+| no hint, reserve 16,384 (starter) | resolved | 6 |
+| no hint, reserve 16,384 (starter) | context_crash | 14 |
+| no hint, reserve 16,384 (starter) | time_budget | 3 |
+| no hint, reserve 16,384 (starter) | tool_call_budget | 4 |
+| no hint, reserve 16,384 (starter) | unresolved_other | 3 |
+| no hint, reserve 8,192 (fixed) | resolved | 9 |
+| no hint, reserve 8,192 (fixed) | context_crash | 0 |
+| no hint, reserve 8,192 (fixed) | time_budget | 9 |
+| no hint, reserve 8,192 (fixed) | tool_call_budget | 5 |
+| no hint, reserve 8,192 (fixed) | unresolved_other | 7 |
+| location hint, reserve 16,384 | resolved | 13 |
+| location hint, reserve 16,384 | context_crash | 9 |
+| location hint, reserve 16,384 | time_budget | 3 |
+| location hint, reserve 16,384 | tool_call_budget | 2 |
+| location hint, reserve 16,384 | unresolved_other | 3 |
+| location hint, reserve 8,192 | resolved | 13 |
+| location hint, reserve 8,192 | context_crash | 2 |
+| location hint, reserve 8,192 | time_budget | 5 |
+| location hint, reserve 8,192 | tool_call_budget | 7 |
+| location hint, reserve 8,192 | unresolved_other | 3 |
+| held-out tasks, no hint, 8,192 | resolved | 5 |
+| held-out tasks, no hint, 8,192 | context_crash | 1 |
+| held-out tasks, no hint, 8,192 | time_budget | 6 |
+| held-out tasks, no hint, 8,192 | tool_call_budget | 11 |
+| held-out tasks, no hint, 8,192 | unresolved_other | 1 |

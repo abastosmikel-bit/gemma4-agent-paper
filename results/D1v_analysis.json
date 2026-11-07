@@ -1,0 +1,183 @@
+{
+ "samples_known": 396,
+ "verified_rows": 84,
+ "verified_without_sample_row": 0,
+ "V": {
+  "e4b/L0": {
+   "samples": 48,
+   "solves": 5,
+   "solves_rate": 0.1042,
+   "solves_rate_ci": [
+    0.0,
+    0.2292
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 3,
+   "exact": 2,
+   "exact_not_solves": 2,
+   "solves_not_exact": 5,
+   "edit_rate": 0.4375,
+   "edits": 21,
+   "solves_given_edit": 0.2381
+  },
+  "e4b/L2": {
+   "samples": 48,
+   "solves": 4,
+   "solves_rate": 0.0833,
+   "solves_rate_ci": [
+    0.0,
+    0.1875
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 3,
+   "exact": 2,
+   "exact_not_solves": 2,
+   "solves_not_exact": 4,
+   "edit_rate": 0.6875,
+   "edits": 33,
+   "solves_given_edit": 0.1212
+  },
+  "e4b/L5": {
+   "samples": 36,
+   "solves": 20,
+   "solves_rate": 0.5556,
+   "solves_rate_ci": [
+    0.3333,
+    0.7778
+   ],
+   "tasks": 18,
+   "tasks_any_solves": 11,
+   "exact": 18,
+   "exact_not_solves": 1,
+   "solves_not_exact": 3,
+   "edit_rate": 0.9444,
+   "edits": 34,
+   "solves_given_edit": 0.5882
+  },
+  "12b/L0": {
+   "samples": 48,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0,
+   "edits": 0,
+   "solves_given_edit": null
+  },
+  "12b/L2": {
+   "samples": 48,
+   "solves": 1,
+   "solves_rate": 0.0208,
+   "solves_rate_ci": [
+    0.0,
+    0.0625
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 1,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 1,
+   "edit_rate": 0.0208,
+   "edits": 1,
+   "solves_given_edit": 1.0
+  },
+  "12b/L5": {
+   "samples": 36,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 18,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0833,
+   "edits": 3,
+   "solves_given_edit": 0.0
+  },
+  "31b/L0": {
+   "samples": 48,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0,
+   "edits": 0,
+   "solves_given_edit": null
+  },
+  "31b/L2": {
+   "samples": 48,
+   "solves": 0,
+   "solves_rate": 0.0,
+   "solves_rate_ci": [
+    0.0,
+    0.0
+   ],
+   "tasks": 24,
+   "tasks_any_solves": 0,
+   "exact": 0,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0,
+   "edits": 0,
+   "solves_given_edit": null
+  },
+  "31b/L5": {
+   "samples": 36,
+   "solves": 1,
+   "solves_rate": 0.0278,
+   "solves_rate_ci": [
+    0.0,
+    0.0833
+   ],
+   "tasks": 18,
+   "tasks_any_solves": 1,
+   "exact": 1,
+   "exact_not_solves": 0,
+   "solves_not_exact": 0,
+   "edit_rate": 0.0278,
+   "edits": 1,
+   "solves_given_edit": 1.0
+  }
+ },
+ "H5_with_solves": {
+  "e4b": {
+   "tasks": 24,
+   "L2_any_solves": 3,
+   "L5_any_solves": 11,
+   "label": "exploratory variant of H5 (e4b)"
+  },
+  "12b": {
+   "tasks": 24,
+   "L2_any_solves": 1,
+   "L5_any_solves": 0,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  },
+  "31b": {
+   "tasks": 24,
+   "L2_any_solves": 0,
+   "L5_any_solves": 1,
+   "label": "exploratory (H5 with solves instead of on_target)"
+  }
+ },
+ "notebook": "notebooks/D1v_test_verify__CPU.ipynb",
+ "plan": "docs/PLAN_D1_heldout_probe.md \u00a76 (exploratory)",
+ "dev_reference": true
+}

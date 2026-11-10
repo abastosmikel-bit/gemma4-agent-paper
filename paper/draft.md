@@ -1,8 +1,3 @@
-<!-- DRAFT: user rewrites. Every prose paragraph below is a draft for Mikel to say in his own words.
-Every number maps to a row in research/claims.md. Held-out numbers come from results/D1_analysis.json,
-results/D1v_analysis.json and results/D2_analysis.json on this branch.
-Word count (title + abstract + body + captions + tables + references, HTML comments excluded): python paper/wordcount.py -->
-
 # Lost or Clueless? Where a Gemma 4 Coding Agent Gets Stuck
 
 **Freezing the agent mid-run to see which information changes its next move**
